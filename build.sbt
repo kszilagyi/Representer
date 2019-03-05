@@ -80,15 +80,11 @@ lazy val common = (project in file("common"))
     name := "common",
     libraryDependencies += "org.log4s" %% "log4s" % "1.4.0",
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",
-    libraryDependencies += "io.spray" %%  "spray-json" % "1.3.4",
     libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.4",
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.4" % "test",
     libraryDependencies += "com.beachape" %% "enumeratum" % "1.5.12",
-    libraryDependencies += "org.bitbucket.cowwoc" % "diff-match-patch" % "1.1",
-    libraryDependencies += "info.debatty" % "java-string-similarity" % "1.1.0",
-    libraryDependencies += "org.typelevel" %% "cats-core" % "1.0.1",
-    libraryDependencies += "org.apache.commons" % "commons-text" % "1.3",
     libraryDependencies += "org.scala-lang.modules" % "scala-java8-compat_2.12" % "0.9.0",
+    libraryDependencies += "com.github.haifengl" %% "smile-scala" % "1.5.1",
     libraryDependencies ++= Seq(
       compilerPlugin("com.github.ghik" %% "silencer-plugin" % silencerVersion),
       "com.github.ghik" %% "silencer-lib" % silencerVersion % Provided
