@@ -69,7 +69,7 @@ object Multiplication {
   def generateData(random: Random, size: Int): immutable.IndexedSeq[FeaturesWithResults] = {
     (1 to size).map { _ =>
       val input = Input(random.nextDouble() * 10, random.nextDouble() * 10)
-      FeaturesWithResults(input, input.a > 5)
+      FeaturesWithResults(input, input.a * input.b > 50)
     }
   }
   def main(args: Array[String]): Unit = {
