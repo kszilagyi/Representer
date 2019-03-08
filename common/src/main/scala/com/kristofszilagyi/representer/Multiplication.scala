@@ -9,7 +9,7 @@ import org.log4s.getLogger
 import smile.classification.NeuralNetwork
 import smile.classification.NeuralNetwork.{ActivationFunction, ErrorFunction}
 import smile.feature.Scaler
-import smile.{classification, validation}
+import smile.{classification, validation, write}
 
 import scala.collection.immutable
 import scala.util.Random
@@ -56,11 +56,11 @@ object Multiplication {
   }
 
 
-  private def trainAndMeasureMetrics(training: Seq[FeaturesWithResults], test: Seq[FeaturesWithResults], hiddenLayerSize: Int): Metrics = {
+  private def trainAndMeasureMetrics(training: Seq[FeaturesWithResults], test: Seq[FeaturesWithResults], hiddenLayerSize: Int): (NeuralNetwork, Metrics) = {
     logger.info(s"Train $hiddenLayerSize")
     val scaledAll = scale(training, test)
     val classifier = generateClassifier(scaledAll.training, hiddenLayerSize = hiddenLayerSize)
-    measureMetrics(classifier, scaledAll)
+    (classifier, measureMetrics(classifier, scaledAll))
   }
 
   final case class Input(a: Double, b: Double) extends Features {
@@ -79,13 +79,17 @@ object Multiplication {
     val test = generateData(random, sampleSize)
     val results = (0 to 6).map { hiddenLayerExponent =>
       val hiddenLayerSize = math.round(math.pow(2, hiddenLayerExponent.toDouble)).toInt
-      val metrics = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize)
-      hiddenLayerSize -> metrics
+      val (nn, metrics) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize)
+      hiddenLayerSize -> ((nn, metrics))
     }
-    val resultString = results.map { case (hiddenLayerSize, metrics) =>
+    val resultString = results.map { case (hiddenLayerSize, (_, metrics)) =>
         s"$hiddenLayerSize,${metrics.csv}"
     }.mkString("\n")
 
     discard(Files.write(Paths.get("results.txt"), resultString.getBytes(StandardCharsets.UTF_8)))
+
+    results.foreach { case (hiddenLayerSize, (nn, _)) =>
+      write.xstream(nn, Paths.get(s"$hiddenLayerSize.xml").toFile.toString)
+    }
   }
 }
