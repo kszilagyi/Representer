@@ -2,7 +2,6 @@ package com.kristofszilagyi.representer
 
 import java.nio.file.{Path, Paths}
 
-import com.kristofszilagyi.representer.DataGenerator.Data
 import smile.feature.Scaler
 
 import scala.collection.immutable
