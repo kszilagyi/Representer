@@ -3,7 +3,7 @@ package com.kristofszilagyi.representer
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 
-import com.kristofszilagyi.representer.Common.{hiddenLayerSizes, modelPath, scale}
+import com.kristofszilagyi.representer.Common.{autoScale, hiddenLayerSizes, modelPath}
 import com.kristofszilagyi.representer.DataGenerator.{Data, testData, trainingData}
 import com.kristofszilagyi.representer.Warts.discard
 import org.log4s.getLogger
@@ -23,10 +23,54 @@ object Multiplication {
     def csv: String = s"$trainingF1,$testF1"
   }
 
+  sealed trait LearningRateStrategy
+  final case object Constant extends LearningRateStrategy
+  final case object Adaptive extends LearningRateStrategy
 
-  private def generateClassifier(training: ScaledData, hiddenLayerSize: Int): NeuralNetwork = {
+
+  private def adaptiveLearning(training: ScaledData, hiddenLayerSize: Int) = {
     val numOfAttributes = training.x.head.length
-    classification.mlp(training.x, training.y, Array(numOfAttributes, hiddenLayerSize, 1), ErrorFunction.CROSS_ENTROPY, ActivationFunction.LOGISTIC_SIGMOID)
+    var learningRate = 0.1
+    val model = classification.mlp(training.x, training.y, Array(numOfAttributes, hiddenLayerSize, 1),
+      ErrorFunction.CROSS_ENTROPY, ActivationFunction.LOGISTIC_SIGMOID, eta = learningRate, epochs = 1)
+    var f1s = Vector.empty[Double]
+    val initialF1 = measureMetrics(model, training)
+    logger.info(s"Current f1 is (epoch 0): $initialF1")
+
+    f1s :+= initialF1
+
+    var epoch = 1 //above is 0
+    var failedToImproveCount = 0
+    while(failedToImproveCount < 100) {
+      model.learn(training.x, training.y)
+      val f1 = measureMetrics(model, training)
+      f1s :+= f1
+      logger.info(s"Current f1 is (epoch $epoch): $f1")
+      if (f1s.size > 6 && f1s(epoch - 6) >= f1s(epoch)) {
+        learningRate *= 0.9995
+        model.setLearningRate(learningRate)
+        logger.info(s"Reducing learning rate: $learningRate")
+      }
+
+      if(f1s.size > 20 && f1s(epoch - 20) >= f1s(epoch)) {
+        failedToImproveCount += 1
+        logger.info(s"Failed to improve count now is $failedToImproveCount")
+      } else failedToImproveCount = 0
+
+      epoch += 1
+    }
+
+
+    model
+  }
+  private def generateClassifier(training: ScaledData, hiddenLayerSize: Int, learningRateStrategy: LearningRateStrategy): NeuralNetwork = {
+    val numOfAttributes = training.x.head.length
+    learningRateStrategy match {
+      case Constant =>
+        classification.mlp(training.x, training.y, Array(numOfAttributes, hiddenLayerSize, 1), ErrorFunction.CROSS_ENTROPY, ActivationFunction.LOGISTIC_SIGMOID)
+      case Adaptive =>
+        adaptiveLearning(training, hiddenLayerSize)
+    }
   }
   private def measureMetrics(classifier: NeuralNetwork, scaledData: ScaledData): Double = {
     val prediction = classifier.predict(scaledData.x)
@@ -42,8 +86,8 @@ object Multiplication {
 
   private def trainAndMeasureMetrics(training: Data, test: Data, hiddenLayerSize: Int): (NeuralNetwork, Metrics) = {
     logger.info(s"Train $hiddenLayerSize")
-    val scaledAll = scale(training, test)
-    val classifier = generateClassifier(scaledAll.training, hiddenLayerSize = hiddenLayerSize)
+    val scaledAll = autoScale(training, test)
+    val classifier = generateClassifier(scaledAll.training, hiddenLayerSize = hiddenLayerSize, Adaptive)
     (classifier, measureMetrics(classifier, scaledAll))
   }
 
@@ -52,7 +96,7 @@ object Multiplication {
   }
 
   def main(args: Array[String]): Unit = {
-    val sampleSize = 100000
+    val sampleSize = 10000
     val training = trainingData(sampleSize)
     val test = testData(sampleSize)
     val results = hiddenLayerSizes.map { hiddenLayerSize =>

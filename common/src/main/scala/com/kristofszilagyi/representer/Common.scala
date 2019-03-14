@@ -20,16 +20,26 @@ object Common {
     }
   }
 
-  def scale(training: Data, test: Data): ScaledAll = {
+  def teachScaler(training: Data): Scaler = {
     val trainingX = training.unscaledX
-    val trainingY = training.unscaledY
     val scaler = new Scaler(true)
     scaler.learn(trainingX)
+    scaler
+  }
+
+  def scale(training: Data, test: Data, scaler: Scaler): ScaledAll = {
+    val trainingX = training.unscaledX
+    val trainingY = training.unscaledY
     val testX = scaler.transform(test.unscaledX)
     val testY = test.unscaledY
     val scaledTrainingX = scaler.transform(trainingX)
     val scaledTrainingData = ScaledData(scaledTrainingX, trainingY)
     val scaledTestData = ScaledData(testX, testY)
     ScaledAll(scaledTrainingData, scaledTestData)
+  }
+
+  def autoScale(training: Data, test: Data): ScaledAll = {
+    val scaler = teachScaler(training)
+    scale(training, test, scaler)
   }
 }

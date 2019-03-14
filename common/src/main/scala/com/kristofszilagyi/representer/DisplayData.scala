@@ -2,7 +2,7 @@ package com.kristofszilagyi.representer
 
 import java.awt.{Color, GridLayout}
 
-import com.kristofszilagyi.representer.Common.{hiddenLayerSizes, modelPath, scale}
+import com.kristofszilagyi.representer.Common._
 import com.kristofszilagyi.representer.TypeSafeEqualsOps._
 import javax.swing.JPanel
 import smile.classification.NeuralNetwork
@@ -12,8 +12,7 @@ import smile.read
 object DisplayData {
 
   private def canvas(data: Array[Array[Double]], label: Array[Int], title: String) = {
-    val canvas = ScatterPlot.plot(data, label, 'x', Array(Color.BLACK, Color.WHITE))
-    canvas.setBackground(Color.GRAY)
+    val canvas = ScatterPlot.plot(data, label, 'x', Array(Color.BLACK, Color.GRAY))
     canvas.setAxisLabels("a", "b")
     canvas.setTitle(title)
     canvas
@@ -25,9 +24,8 @@ object DisplayData {
     canvas.setTitle(title)
   }
 
-  private def multiWindow(title: String, canvases: Seq[PlotCanvas]) = {
+  private def multiWindow(title: String, canvases: Seq[PlotCanvas]): Unit = {
     val panel = new JPanel(new GridLayout(2, canvases.size / 2))
-    panel.setBackground(Color.white)
     canvases.foreach(panel.add)
     val frame = Window.frame(title)
     frame.add(panel)
@@ -35,10 +33,17 @@ object DisplayData {
   }
 
   def main(args: Array[String]): Unit = {
-    hiddenLayerSizes.foreach { hiddenLayerSize =>
+    hiddenLayerSizes.take(3).foreach { hiddenLayerSize =>
       val model = read.xstream(modelPath(hiddenLayerSize).toFile.toString).asInstanceOf[NeuralNetwork]
-      val dataSize = 1000
-      val ScaledAll(training, test) = scale(DataGenerator.trainingData(dataSize), DataGenerator.testData(dataSize))
+      val dataSize = 100000
+      val constraint = (a: Double, b: Double) => math.abs(a * b - 50) < 20
+      val trainingUnconstrained = DataGenerator.trainingData(dataSize)
+      val scaler = teachScaler(trainingUnconstrained)
+      val ScaledAll(training, test) = scale(
+        DataGenerator.constrainedTrainingData(dataSize, constraint),
+        DataGenerator.constrainedTestData(dataSize, constraint),
+        scaler
+      )
       val trainingPrediction = model.predict(training.x)
       val testPrediction = model.predict(test.x)
 
