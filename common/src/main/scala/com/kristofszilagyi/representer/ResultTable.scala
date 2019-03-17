@@ -8,8 +8,21 @@ object ResultId {
 }
 final case class ResultId(i: Int)
 
+final case class OOResult(truePositiveCount: Int, falsePositiveCount: Int, trueNegativeCount: Int,
+                          falseNegativeCount: Int, epoch: Int) {
+  // main reason for this is to check if the fields are the same
+  def toRelational(id: ResultId): Result = {
+    Result(id, truePositiveCount = truePositiveCount, falsePositiveCount = falsePositiveCount,
+      trueNegativeCount = trueNegativeCount,
+      falseNegativeCount = falseNegativeCount, epoch = epoch)
+  }
+}
+
 final case class Result(id: ResultId, truePositiveCount: Int, falsePositiveCount: Int, trueNegativeCount: Int,
-                        falseNegativeCount: Int, epoch: Int)
+                        falseNegativeCount: Int, epoch: Int) {
+  def toOO: OOResult = OOResult(truePositiveCount = truePositiveCount, falsePositiveCount = falsePositiveCount,
+    trueNegativeCount = trueNegativeCount, falseNegativeCount = falseNegativeCount, epoch = epoch)
+}
 
 object ResultTable {
   val resultQuery =  TableQuery[ResultTable]

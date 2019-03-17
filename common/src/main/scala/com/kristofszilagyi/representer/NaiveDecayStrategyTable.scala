@@ -8,8 +8,17 @@ object NaiveDecayStrategyId{
   implicit val jdbcType: JdbcType[NaiveDecayStrategyId] = MappedColumnType.base[NaiveDecayStrategyId, Int](_.i, NaiveDecayStrategyId.apply)
 
 }
+
+final case class OONaiveDecayStrategy(multiplier: Double) {
+  // compile time check for being the same
+  def toRelational(id: NaiveDecayStrategyId): NaiveDecayStrategy = NaiveDecayStrategy(id, multiplier)
+}
+
+
 final case class NaiveDecayStrategyId(i: Int)
-final case class NaiveDecayStrategy(id: NaiveDecayStrategyId, multiplier: Double)
+final case class NaiveDecayStrategy(id: NaiveDecayStrategyId, multiplier: Double) {
+  def toOO: OONaiveDecayStrategy = OONaiveDecayStrategy(multiplier)
+}
 final class NaiveDecayStrategyTable(tag: Tag) extends Table[NaiveDecayStrategy](tag, "naiveDecayStrategy") {
   def id: Rep[NaiveDecayStrategyId] = column[NaiveDecayStrategyId]("id")
   def multiplier: Rep[Double] = column[Double]("multiplier")
