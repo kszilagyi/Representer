@@ -1,2 +1,5 @@
 .idea
 target/
+sqlDiagrams
+postgresql-42.2.5.jar
+schemaspy-6.0.0.jar
