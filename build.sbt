@@ -78,16 +78,19 @@ val silencerVersion = "1.2"
 lazy val common = (project in file("common"))
   .settings(
     name := "common",
-    libraryDependencies += "org.log4s" %% "log4s" % "1.4.0",
-    libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",
-    libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.4",
-    libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.4" % "test",
-    libraryDependencies += "com.beachape" %% "enumeratum" % "1.5.12",
-    libraryDependencies += "org.scala-lang.modules" % "scala-java8-compat_2.12" % "0.9.0",
-    libraryDependencies += "com.github.haifengl" %% "smile-scala" % "1.5.1",
     libraryDependencies ++= Seq(
+      "org.log4s" %% "log4s" % "1.4.0",
+      "ch.qos.logback" % "logback-classic" % "1.2.3",
+      "org.scalactic" %% "scalactic" % "3.0.4",
+      "org.scalatest" %% "scalatest" % "3.0.4" % "test",
+      "com.beachape" %% "enumeratum" % "1.5.12",
+      "org.scala-lang.modules" % "scala-java8-compat_2.12" % "0.9.0",
+      "com.github.haifengl" %% "smile-scala" % "1.5.1",
+      "com.typesafe.slick" %% "slick" % "3.3.0",
+      "com.typesafe.slick" %% "slick-hikaricp" % "3.3.0",
       compilerPlugin("com.github.ghik" %% "silencer-plugin" % silencerVersion),
-      "com.github.ghik" %% "silencer-lib" % silencerVersion % Provided
+      "com.github.ghik" %% "silencer-lib" % silencerVersion % Provided,
+      "org.postgresql" % "postgresql" % "9.4-1206-jdbc42"
     ),
     commonSettings
   )

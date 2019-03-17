@@ -5,7 +5,7 @@ import java.nio.file.{Path, Paths}
 import smile.feature.Scaler
 
 import scala.collection.immutable
-final case class ScaledData(x: Array[Array[Double]], y: Array[Int])
+final class ScaledData(val x: Array[Array[Double]], val y: Array[Int])
 final case class ScaledAll(training: ScaledData, test: ScaledData)
 
 object Common {
@@ -32,8 +32,8 @@ object Common {
     val testX = scaler.transform(test.unscaledX)
     val testY = test.unscaledY
     val scaledTrainingX = scaler.transform(trainingX)
-    val scaledTrainingData = ScaledData(scaledTrainingX, trainingY)
-    val scaledTestData = ScaledData(testX, testY)
+    val scaledTrainingData = new ScaledData(scaledTrainingX, trainingY)
+    val scaledTestData = new ScaledData(testX, testY)
     ScaledAll(scaledTrainingData, scaledTestData)
   }
 

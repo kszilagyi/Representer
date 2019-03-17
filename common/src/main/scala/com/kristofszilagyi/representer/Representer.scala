@@ -2,6 +2,7 @@ package com.kristofszilagyi.representer
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
+import slick.jdbc.PostgresProfile.api._
 
 import com.kristofszilagyi.representer.Common.{autoScale, hiddenLayerSizes, modelPath}
 import com.kristofszilagyi.representer.Warts.discard
@@ -27,6 +28,7 @@ object Representer {
   final case object Adaptive extends LearningRateStrategy
 
 
+  @SuppressWarnings(Array(Warts.Var))
   private def adaptiveLearning(training: ScaledData, hiddenLayerSize: Int) = {
     val numOfAttributes = training.x.head.length
     var learningRate = 0.1
@@ -95,6 +97,8 @@ object Representer {
   }
 
   def main(args: Array[String]): Unit = {
+    val db = Database.forConfig("representer")
+    print(db)
     val cases: Traversable[TestCase] = Traversable(Multiplication)
     val sampleSize = 10000
     cases.foreach { testCase =>
