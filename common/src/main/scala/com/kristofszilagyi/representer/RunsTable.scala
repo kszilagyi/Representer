@@ -2,6 +2,7 @@ package com.kristofszilagyi.representer
 
 import java.util.concurrent.TimeUnit
 
+import com.kristofszilagyi.representer.NaiveDecayStrategyTable.naiveDecayStrategyQuery
 import com.kristofszilagyi.representer.implicits._
 import com.thoughtworks.xstream.XStream
 import slick.jdbc.JdbcType
@@ -35,8 +36,12 @@ final class RunsTable(tag: Tag) extends Table[Run](tag, "runs") {
   def firstHiddenLayerSize: Rep[Int] = column[Int]("firstHiddenLayerSize")
   def initialLearningRate: Rep[Double] = column[Double]("initialLearningRate")
   def epochsTaken: Rep[Int] = column[Int]("epochsTaken")
+
   def timeTaken: Rep[FiniteDuration] = column[FiniteDuration]("timeTaken")
-  def naiveDecayStrategy: Rep[Option[NaiveDecayStrategyId]] = column[Option[NaiveDecayStrategyId]]("naiveDecayStrategy")
+  def naiveDecayStrategyId: Rep[Option[NaiveDecayStrategyId]] = column[Option[NaiveDecayStrategyId]]("naiveDecayStrategy")
+  def naiveDecayStrategy = foreignKey("naiveDecayStrategyFK", naiveDecayStrategyId,
+    naiveDecayStrategyQuery)(_.id.?, onUpdate=ForeignKeyAction.Restrict)
+
   def * : ProvenShape[Run] = (id, model, firstHiddenLayerSize, initialLearningRate, epochsTaken,
-    timeTaken, naiveDecayStrategy).shaped <> (Run.tupled.apply, Run.unapply)
+    timeTaken, naiveDecayStrategyId).shaped <> (Run.tupled.apply, Run.unapply)
 }

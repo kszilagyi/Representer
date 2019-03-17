@@ -16,3 +16,7 @@ final class NaiveDecayStrategyTable(tag: Tag) extends Table[NaiveDecayStrategy](
 
   def * : ProvenShape[NaiveDecayStrategy] = (id, multiplier).shaped <> (NaiveDecayStrategy.tupled.apply, NaiveDecayStrategy.unapply)
 }
+
+object NaiveDecayStrategyTable {
+  val naiveDecayStrategyQuery = TableQuery[NaiveDecayStrategyTable]
+}
