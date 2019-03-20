@@ -3,10 +3,9 @@ import slick.jdbc.JdbcType
 import slick.jdbc.PostgresProfile.api._
 import slick.lifted.ProvenShape
 
-object NaiveDecayStrategyId{
-
+object NaiveDecayStrategyId {
   implicit val jdbcType: JdbcType[NaiveDecayStrategyId] = MappedColumnType.base[NaiveDecayStrategyId, Int](_.i, NaiveDecayStrategyId.apply)
-
+  final val ignored = NaiveDecayStrategyId(-1)
 }
 
 final case class OONaiveDecayStrategy(multiplier: Double) {

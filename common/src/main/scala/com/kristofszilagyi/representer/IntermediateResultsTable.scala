@@ -6,6 +6,9 @@ import slick.lifted.{ForeignKeyQuery, ProvenShape}
 
 final case class IntermediateResults(run: RunId, result: ResultId)
 
+object IntermediateResultsTable {
+  val intermediateResultsQuery = TableQuery[IntermediateResultsTable]
+}
 final class IntermediateResultsTable (tag: Tag) extends Table[IntermediateResults](tag, "intermediateResults") {
   def runId: Rep[RunId] = column[RunId]("run")
   def run: ForeignKeyQuery[RunsTable, Run] = foreignKey("runFK", runId, runsQuery)(_.id)

@@ -98,7 +98,7 @@ object Representer {
 
   def main(args: Array[String]): Unit = {
     val db = Database.forConfig("representer")
-    print(db)
+
     val cases: Traversable[TestCase] = Traversable(Multiplication)
     val sampleSize = 10000
     cases.foreach { testCase =>

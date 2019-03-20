@@ -5,6 +5,7 @@ import slick.jdbc.PostgresProfile.api._
 import slick.lifted.ProvenShape
 object ResultId {
   implicit val jdbcType: JdbcType[ResultId] = MappedColumnType.base[ResultId, Int](_.i, ResultId.apply)
+  def ignored = ResultId(-1)
 }
 final case class ResultId(i: Int)
 
