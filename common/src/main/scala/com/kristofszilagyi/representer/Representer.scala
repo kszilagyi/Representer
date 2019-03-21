@@ -115,13 +115,11 @@ object Representer {
         s"$hiddenLayerSize,${metrics.csv}"
       }.mkString("\n")
 
-      discard(Files.write(Paths.get("results.txt"), resultString.getBytes(StandardCharsets.UTF_8)))
 
       results.foreach { case (hiddenLayerSize, (nn, _)) =>
         val run = OORun(nn, hiddenLayerSize, 10, 10, OOResult(10, 10, 10, 10, 10), 10.seconds,
           Some(OONaiveDecayStrategy(10)), Traversable(OOResult(10, 10, 10, 10, 10)))
         Await.result(run.write(db), 10.seconds)
-        write.xstream(nn, modelPath(hiddenLayerSize).toFile.toString)
       }
     }
   }
