@@ -1,16 +1,13 @@
 package com.kristofszilagyi.representer
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths}
-
-import slick.jdbc.PostgresProfile.api._
-import com.kristofszilagyi.representer.Common.{autoScale, hiddenLayerSizes, modelPath}
-import com.kristofszilagyi.representer.Warts.discard
+import com.kristofszilagyi.representer.Common.{autoScale, hiddenLayerSizes}
 import com.kristofszilagyi.representer.tables._
 import org.log4s.getLogger
+import slick.jdbc.PostgresProfile.api._
 import smile.classification.NeuralNetwork
 import smile.classification.NeuralNetwork.{ActivationFunction, ErrorFunction}
-import smile.{classification, validation, write}
+import smile.{classification, validation}
+
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, ExecutionContextExecutor}
 
@@ -39,7 +36,7 @@ object Representer {
       ErrorFunction.CROSS_ENTROPY, ActivationFunction.LOGISTIC_SIGMOID, eta = learningRate, epochs = 1)
     var f1s = Vector.empty[Double]
     val initialF1 = measureMetrics(model, training)
-    logger.info(s"Current f1 is (epoch 0): $initialF1")
+    logger.debug(s"Current f1 is (epoch 0): $initialF1")
 
     f1s :+= initialF1
 
@@ -49,16 +46,16 @@ object Representer {
       model.learn(training.x, training.y)
       val f1 = measureMetrics(model, training)
       f1s :+= f1
-      logger.info(s"Current f1 is (epoch $epoch): $f1")
+      logger.debug(s"Current f1 is (epoch $epoch): $f1")
       if (f1s.size > 6 && f1s(epoch - 6) >= f1s(epoch)) {
         learningRate *= 0.9995
         model.setLearningRate(learningRate)
-        logger.info(s"Reducing learning rate: $learningRate")
+        logger.debug(s"Reducing learning rate: $learningRate")
       }
 
       if(f1s.size > 20 && f1s(epoch - 20) >= f1s(epoch)) {
         failedToImproveCount += 1
-        logger.info(s"Failed to improve count now is $failedToImproveCount")
+        logger.debug(s"Failed to improve count now is $failedToImproveCount")
       } else failedToImproveCount = 0
 
       epoch += 1
@@ -111,9 +108,6 @@ object Representer {
         val (nn, metrics) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize)
         hiddenLayerSize -> ((nn, metrics))
       }
-      val resultString = results.map { case (hiddenLayerSize, (_, metrics)) =>
-        s"$hiddenLayerSize,${metrics.csv}"
-      }.mkString("\n")
 
 
       results.foreach { case (hiddenLayerSize, (nn, _)) =>
