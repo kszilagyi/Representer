@@ -1,4 +1,5 @@
-package com.kristofszilagyi.representer
+package com.kristofszilagyi.representer.tables
+
 import slick.jdbc.JdbcType
 import slick.jdbc.PostgresProfile.api._
 import slick.lifted.ProvenShape
@@ -19,7 +20,7 @@ final case class NaiveDecayStrategy(id: NaiveDecayStrategyId, multiplier: Double
   def toOO: OONaiveDecayStrategy = OONaiveDecayStrategy(multiplier)
 }
 final class NaiveDecayStrategyTable(tag: Tag) extends Table[NaiveDecayStrategy](tag, "naiveDecayStrategy") {
-  def id: Rep[NaiveDecayStrategyId] = column[NaiveDecayStrategyId]("id")
+  def id: Rep[NaiveDecayStrategyId] = column[NaiveDecayStrategyId]("id", O.PrimaryKey, O.AutoInc)
   def multiplier: Rep[Double] = column[Double]("multiplier")
 
   def * : ProvenShape[NaiveDecayStrategy] = (id, multiplier).shaped <> (NaiveDecayStrategy.tupled.apply, NaiveDecayStrategy.unapply)

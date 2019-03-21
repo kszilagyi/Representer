@@ -1,20 +1,20 @@
-package com.kristofszilagyi.representer
+package com.kristofszilagyi.representer.tables
 
 import java.util.concurrent.TimeUnit
 
-import com.kristofszilagyi.representer.IntermediateResultsTable.intermediateResultsQuery
-import com.kristofszilagyi.representer.NaiveDecayStrategyTable.naiveDecayStrategyQuery
-import com.kristofszilagyi.representer.ResultTable.resultQuery
-import com.kristofszilagyi.representer.RunsTable.runsQuery
+import com.kristofszilagyi.representer.tables.IntermediateResultsTable.intermediateResultsQuery
+import com.kristofszilagyi.representer.tables.NaiveDecayStrategyTable.naiveDecayStrategyQuery
+import com.kristofszilagyi.representer.tables.ResultTable.resultQuery
+import com.kristofszilagyi.representer.tables.RunsTable.runsQuery
 import com.kristofszilagyi.representer.Warts.{AsInstanceOf, discard}
-import com.kristofszilagyi.representer.implicits._
+import com.kristofszilagyi.representer.tables.implicits._
 import com.thoughtworks.xstream.XStream
 import slick.jdbc.JdbcType
 import slick.jdbc.PostgresProfile.api._
 import slick.lifted.ProvenShape
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration.DurationConversions.Classifier
+import smile.classification.Classifier
 import scala.concurrent.duration.FiniteDuration
 
 object implicits {
@@ -71,7 +71,7 @@ final case class OORun(model: Classifier[Array[Double]], firstHiddenLayerSize: I
       }
     }
     val insertAll = intermediateResultRows.map(rows => intermediateResultsQuery ++= rows)
-    db.run(insertAll).map(discard)
+    db.run(insertAll.transactionally).map(discard)
   }
 }
 
@@ -89,14 +89,14 @@ object RunsTable {
 }
 
 final class RunsTable(tag: Tag) extends Table[Run](tag, "runs") {
-  def id: Rep[RunId] = column[RunId]("id")
+  def id: Rep[RunId] = column[RunId]("id", O.PrimaryKey, O.AutoInc)
   def model: Rep[Classifier[Array[Double]]] = column[Classifier[Array[Double]]]("model")
   def firstHiddenLayerSize: Rep[Int] = column[Int]("firstHiddenLayerSize")
   def initialLearningRate: Rep[Double] = column[Double]("initialLearningRate")
   def epochsTaken: Rep[Int] = column[Int]("epochsTaken")
-  def finalResultId: Rep[ResultId] = column[ResultId]("finalResultId")
+  def finalResultId: Rep[ResultId] = column[ResultId]("finalResult")
   def finalResult = foreignKey("finalResultFK", finalResultId, resultQuery)(_.id)
-  def timeTaken: Rep[FiniteDuration] = column[FiniteDuration]("timeTaken")
+  def timeTaken: Rep[FiniteDuration] = column[FiniteDuration]("trainingTimeNs")
   def naiveDecayStrategyId: Rep[Option[NaiveDecayStrategyId]] = column[Option[NaiveDecayStrategyId]]("naiveDecayStrategy")
   def naiveDecayStrategy = foreignKey("naiveDecayStrategyFK", naiveDecayStrategyId,
     naiveDecayStrategyQuery)(_.id.?)

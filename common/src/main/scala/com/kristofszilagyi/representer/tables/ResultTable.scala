@@ -1,4 +1,4 @@
-package com.kristofszilagyi.representer
+package com.kristofszilagyi.representer.tables
 
 import slick.jdbc.JdbcType
 import slick.jdbc.PostgresProfile.api._
@@ -29,7 +29,7 @@ object ResultTable {
   val resultQuery =  TableQuery[ResultTable]
 }
 final class ResultTable(tag: Tag) extends Table[Result](tag, "result") {
-  def id: Rep[ResultId] = column[ResultId]("id")
+  def id: Rep[ResultId] = column[ResultId]("id", O.PrimaryKey, O.AutoInc)
   def truePositiveCount: Rep[Int] = column[Int]("truePositiveCount")
   def falsePositiveCount: Rep[Int] = column[Int]("falsePositiveCount")
   def trueNegativeCount: Rep[Int] = column[Int]("trueNegativeCount")

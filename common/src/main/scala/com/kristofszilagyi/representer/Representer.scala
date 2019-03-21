@@ -2,14 +2,17 @@ package com.kristofszilagyi.representer
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
-import slick.jdbc.PostgresProfile.api._
 
+import slick.jdbc.PostgresProfile.api._
 import com.kristofszilagyi.representer.Common.{autoScale, hiddenLayerSizes, modelPath}
 import com.kristofszilagyi.representer.Warts.discard
+import com.kristofszilagyi.representer.tables._
 import org.log4s.getLogger
 import smile.classification.NeuralNetwork
 import smile.classification.NeuralNetwork.{ActivationFunction, ErrorFunction}
 import smile.{classification, validation, write}
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.{Await, ExecutionContextExecutor}
 
 object Representer {
   private val logger = getLogger
@@ -98,9 +101,9 @@ object Representer {
 
   def main(args: Array[String]): Unit = {
     val db = Database.forConfig("representer")
-
+    implicit val ec: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
     val cases: Traversable[TestCase] = Traversable(Multiplication)
-    val sampleSize = 10000
+    val sampleSize = 100
     cases.foreach { testCase =>
       val training = testCase.trainingData(sampleSize)
       val test = testCase.testData(sampleSize)
@@ -115,6 +118,9 @@ object Representer {
       discard(Files.write(Paths.get("results.txt"), resultString.getBytes(StandardCharsets.UTF_8)))
 
       results.foreach { case (hiddenLayerSize, (nn, _)) =>
+        val run = OORun(nn, hiddenLayerSize, 10, 10, OOResult(10, 10, 10, 10, 10), 10.seconds,
+          Some(OONaiveDecayStrategy(10)), Traversable(OOResult(10, 10, 10, 10, 10)))
+        Await.result(run.write(db), 10.seconds)
         write.xstream(nn, modelPath(hiddenLayerSize).toFile.toString)
       }
     }

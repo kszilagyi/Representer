@@ -1,6 +1,7 @@
-package com.kristofszilagyi.representer
-import com.kristofszilagyi.representer.ResultTable.resultQuery
-import com.kristofszilagyi.representer.RunsTable.runsQuery
+package com.kristofszilagyi.representer.tables
+
+import com.kristofszilagyi.representer.tables.ResultTable.resultQuery
+import com.kristofszilagyi.representer.tables.RunsTable.runsQuery
 import slick.jdbc.PostgresProfile.api._
 import slick.lifted.{ForeignKeyQuery, ProvenShape}
 

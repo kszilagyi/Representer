@@ -1,7 +1,7 @@
 package com.kristofszilagyi.representer
 
 import com.kristofszilagyi.representer.BooleanOps.RichBoolean
-import com.kristofszilagyi.representer.Representer.FeaturesWithResults
+import Representer.FeaturesWithResults
 
 import scala.collection.immutable
 import scala.util.Random
