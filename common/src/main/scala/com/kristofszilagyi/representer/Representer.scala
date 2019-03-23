@@ -1,16 +1,16 @@
 package com.kristofszilagyi.representer
 
 import com.kristofszilagyi.representer.Common.{autoScale, hiddenLayerSizes, learningRates}
+import com.kristofszilagyi.representer.TypeSafeEqualsOps._
+import com.kristofszilagyi.representer.tables.RunsTable._
 import com.kristofszilagyi.representer.tables._
 import org.log4s.getLogger
 import slick.jdbc.PostgresProfile.api._
 import smile.classification.NeuralNetwork
 import smile.classification.NeuralNetwork.{ActivationFunction, ErrorFunction}
 import smile.{classification, validation}
-import TypeSafeEqualsOps._
-import com.kristofszilagyi.representer.tables.RunsTable._
 
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{Duration, DurationInt}
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 
 object Representer {
@@ -124,10 +124,15 @@ object Representer {
     AllMetrics(training = training, test = test)
   }
 
-  private def trainAndMeasureMetrics(training: Data, test: Data, hiddenLayerSize: Int, initialLearningRate: Double): (NeuralNetwork, OOResult) = {
+  private def trainAndMeasureMetrics(training: Data, test: Data, hiddenLayerSize: Int, initialLearningRate: Double) = {
     val scaledAll = autoScale(training, test)
+    val start = System.nanoTime()
     val classifierWithLastEpoch = generateClassifier(scaledAll.training, hiddenLayerSize = hiddenLayerSize, Adaptive, initialLearningRate)
-    (classifierWithLastEpoch.classifier, measureMetrics(classifierWithLastEpoch.classifier, scaledAll).toResult(classifierWithLastEpoch.lastEpoch))
+    val end = System.nanoTime()
+    (classifierWithLastEpoch.classifier,
+      measureMetrics(classifierWithLastEpoch.classifier, scaledAll).toResult(classifierWithLastEpoch.lastEpoch),
+      Duration.fromNanos(end - start)
+    )
   }
 
   final case class Input(a: Double, b: Double) extends Features {
@@ -154,9 +159,9 @@ object Representer {
           val computeAndWrite = checkIfDone.flatMap { matchingRuns =>
             if (matchingRuns.isEmpty) {
               logger.info(s"Training ${testCase.name.s}. hiddenLayerSize: $hiddenLayerSize, sampleSize: $sampleSize, initialLearningRate $initialLearningRate")
-              val (nn, metrics) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize, initialLearningRate)
+              val (nn, metrics, timeTook) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize, initialLearningRate)
               val run = OORun(testCase.name, nn, sampleSize = sampleSize, firstHiddenLayerSize = hiddenLayerSize, initialLearningRate = initialLearningRate,
-                metrics, 10.seconds,
+                metrics, timeTook,
                 Some(OONaiveDecayStrategy(10)), Traversable(OOResult(10, 10, 10, 10, 10, 10, 10, 10, Epoch(10))))
               run.write(db)
             } else if (matchingRuns.size ==== 1) {
