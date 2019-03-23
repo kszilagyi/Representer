@@ -3,21 +3,19 @@ package com.kristofszilagyi.representer.tables
 import java.util.concurrent.TimeUnit
 
 import com.kristofszilagyi.representer.TestCaseName
-import com.kristofszilagyi.representer.tables.IntermediateResultsTable.intermediateResultsQuery
+import com.kristofszilagyi.representer.Warts.{AsInstanceOf, discard}
 import com.kristofszilagyi.representer.tables.NaiveDecayStrategyTable.naiveDecayStrategyQuery
 import com.kristofszilagyi.representer.tables.ResultTable.resultQuery
 import com.kristofszilagyi.representer.tables.RunsTable.runsQuery
-import com.kristofszilagyi.representer.Warts.{AsInstanceOf, discard}
 import com.kristofszilagyi.representer.tables.implicits._
 import com.thoughtworks.xstream.XStream
 import slick.jdbc.JdbcType
 import slick.jdbc.PostgresProfile.api._
 import slick.lifted.ProvenShape
-
-import scala.concurrent.{ExecutionContext, Future}
 import smile.classification.Classifier
 
 import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{ExecutionContext, Future}
 
 object implicits {
   @SuppressWarnings(Array(AsInstanceOf))
@@ -37,9 +35,8 @@ object implicits {
 }
 
 final case class OORun(testCaseName: TestCaseName, model: Classifier[Array[Double]], sampleSize: Int, firstHiddenLayerSize: Int,
-                       initialLearningRate: Double, finalResult: OOResult, timeTaken: FiniteDuration, naiveDecayStrategy: Option[OONaiveDecayStrategy],
-                       private val intermediateResultsUnordered: Traversable[OOResult]) {
-  def intermediateResults: Seq[OOResult] = intermediateResultsUnordered.toSeq.sortBy(_.epoch)
+                       initialLearningRate: Double, finalResult: OOResult, timeTaken: FiniteDuration,
+                       naiveDecayStrategy: Option[OONaiveDecayStrategy]) {
 
   def maybeNaiveDecayStrategyRow: Option[NaiveDecayStrategy] = naiveDecayStrategy.map(_.toRelational(NaiveDecayStrategyId.ignored))
   def finalResultRow: Result = finalResult.toRelational(ResultId.ignored)
@@ -52,26 +49,17 @@ final case class OORun(testCaseName: TestCaseName, model: Classifier[Array[Doubl
   def write(db: Database)(implicit ec: ExecutionContext): Future[Unit] = {
     val maybeNaiveDecayStrategyId = maybeNaiveDecayStrategyRow.map((naiveDecayStrategyQuery returning naiveDecayStrategyQuery.map(_.id)) += _)
     val finalResultId = (resultQuery returning resultQuery.map(_.id)) += finalResult.toRelational(ResultId.ignored)
-    val runId = finalResultId.flatMap { resultId =>
+    val insertAll = finalResultId.flatMap { resultId =>
       maybeNaiveDecayStrategyId match {
         case Some(naiveStrategyId) =>
           naiveStrategyId.flatMap { strategyId =>
-            (runsQuery returning runsQuery.map(_.id)) += this.toRelational(RunId.ignored, resultId, Some(strategyId))
+            runsQuery += this.toRelational(RunId.ignored, resultId, Some(strategyId))
           }
         case None =>
-          (runsQuery returning runsQuery.map(_.id)) += this.toRelational(RunId.ignored, resultId, None)
+          runsQuery += this.toRelational(RunId.ignored, resultId, None)
       }
     }
-    val intermediateResultIds = resultQuery returning resultQuery.map(_.id) ++= intermediateResults.map(_.toRelational(ResultId.ignored))
 
-    val intermediateResultRows = intermediateResultIds.flatMap{interResult =>
-      runId.map { r =>
-        interResult.map { i =>
-          IntermediateResults(r, i)
-        }
-      }
-    }
-    val insertAll = intermediateResultRows.map(rows => intermediateResultsQuery ++= rows)
     db.run(insertAll.transactionally).map(discard)
   }
 }

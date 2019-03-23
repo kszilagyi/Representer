@@ -162,8 +162,7 @@ object Representer {
                 logger.info(s"Training $paramsString")
                 val (nn, metrics, timeTook) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize, learningRateDecayStrategy, initialLearningRate)
                 val run = OORun(testCase.name, nn, sampleSize = sampleSize, firstHiddenLayerSize = hiddenLayerSize, initialLearningRate = initialLearningRate,
-                  metrics, timeTook,
-                  learningRateDecayStrategy.toRelational, Traversable(OOResult(10, 10, 10, 10, 10, 10, 10, 10, Epoch(10))))
+                  metrics, timeTook, learningRateDecayStrategy.toRelational)
                 run.write(db)
               } else if (matchingRuns.size ==== 1) {
                 logger.info(s"Skipping $paramsString")
