@@ -156,17 +156,17 @@ object Representer {
                   (r.naiveDecayStrategyId.isEmpty && learningRateDecayStrategy ==== Constant))
             }.result)
             val computeAndWrite = checkIfDone.flatMap { matchingRuns =>
+              val paramsString = s"${testCase.name.s}: hiddenLayerSize=$hiddenLayerSize, sampleSize=$sampleSize," +
+                                 s" initialLearningRate=$initialLearningRate, learningRateStrategy=${learningRateDecayStrategy.name}"
               if (matchingRuns.isEmpty) {
-                logger.info(s"Training ${testCase.name.s}. hiddenLayerSize: $hiddenLayerSize, sampleSize: $sampleSize," +
-                  s" initialLearningRate $initialLearningRate, learningRateStrategy: $learningRateDecayStrategy")
+                logger.info(s"Training $paramsString")
                 val (nn, metrics, timeTook) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize, learningRateDecayStrategy, initialLearningRate)
                 val run = OORun(testCase.name, nn, sampleSize = sampleSize, firstHiddenLayerSize = hiddenLayerSize, initialLearningRate = initialLearningRate,
                   metrics, timeTook,
                   learningRateDecayStrategy.toRelational, Traversable(OOResult(10, 10, 10, 10, 10, 10, 10, 10, Epoch(10))))
                 run.write(db)
               } else if (matchingRuns.size ==== 1) {
-                logger.info(s"Skipping ${testCase.name.s}, hiddenLayerSize = $hiddenLayerSize, sampleSize: $sampleSize, " +
-                  s"initialLearningRate: $initialLearningRate, learningRateStrategy: $learningRateDecayStrategy")
+                logger.info(s"Skipping $paramsString")
                 Future.successful(())
               } else {
                 Future.failed(new AssertionError(s"multiple matching runs: $matchingRuns"))
