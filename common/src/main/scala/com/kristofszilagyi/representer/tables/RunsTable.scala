@@ -36,8 +36,8 @@ object implicits {
   )
 }
 
-final case class OORun(testCaseName: TestCaseName, model: Classifier[Array[Double]], firstHiddenLayerSize: Int, initialLearningRate: Double,
-                       epochsTaken: Int, finalResult: OOResult, timeTaken: FiniteDuration, naiveDecayStrategy: Option[OONaiveDecayStrategy],
+final case class OORun(testCaseName: TestCaseName, model: Classifier[Array[Double]], sampleSize: Int, firstHiddenLayerSize: Int,
+                       initialLearningRate: Double, finalResult: OOResult, timeTaken: FiniteDuration, naiveDecayStrategy: Option[OONaiveDecayStrategy],
                        private val intermediateResultsUnordered: Traversable[OOResult]) {
   def intermediateResults: Seq[OOResult] = intermediateResultsUnordered.toSeq.sortBy(_.epoch)
 
@@ -45,9 +45,8 @@ final case class OORun(testCaseName: TestCaseName, model: Classifier[Array[Doubl
   def finalResultRow: Result = finalResult.toRelational(ResultId.ignored)
 
   def toRelational(id: RunId, finalResultId: ResultId, naiveDecayStrategyId: Option[NaiveDecayStrategyId]): Run =
-    Run(id = id, model = model, testCaseName, firstHiddenLayerSize = firstHiddenLayerSize,
-      initialLearningRate = initialLearningRate,
-      epochsTaken = epochsTaken, finalResultId = finalResultId,
+    Run(id = id, model = model, testCaseName, sampleSize, firstHiddenLayerSize = firstHiddenLayerSize,
+      initialLearningRate = initialLearningRate, finalResultId = finalResultId,
       timeTaken = timeTaken, naiveDecayStrategy = naiveDecayStrategyId
     )
   def write(db: Database)(implicit ec: ExecutionContext): Future[Unit] = {
@@ -83,8 +82,9 @@ object RunId {
   val ignored = RunId(-1)
 }
 final case class RunId(i: Int)
-final case class Run(id: RunId, model: Classifier[Array[Double]], testCaseName: TestCaseName, firstHiddenLayerSize: Int, initialLearningRate: Double,
-                     epochsTaken: Int, finalResultId: ResultId, timeTaken: FiniteDuration, naiveDecayStrategy: Option[NaiveDecayStrategyId])
+final case class Run(id: RunId, model: Classifier[Array[Double]], testCaseName: TestCaseName, sampleSize: Int, firstHiddenLayerSize: Int,
+                     initialLearningRate: Double, finalResultId: ResultId, timeTaken: FiniteDuration,
+                     naiveDecayStrategy: Option[NaiveDecayStrategyId])
 
 object RunsTable {
   def runsQuery = TableQuery[RunsTable]
@@ -94,9 +94,9 @@ final class RunsTable(tag: Tag) extends Table[Run](tag, "runs") {
   def id: Rep[RunId] = column[RunId]("id", O.PrimaryKey, O.AutoInc)
   def model: Rep[Classifier[Array[Double]]] = column[Classifier[Array[Double]]]("model")
   def testCaseName: Rep[TestCaseName] = column[TestCaseName]("testCaseName")
+  def sampleSize: Rep[Int] = column[Int]("sampleSize")
   def firstHiddenLayerSize: Rep[Int] = column[Int]("firstHiddenLayerSize")
   def initialLearningRate: Rep[Double] = column[Double]("initialLearningRate")
-  def epochsTaken: Rep[Int] = column[Int]("epochsTaken")
   def finalResultId: Rep[ResultId] = column[ResultId]("finalResult")
   def finalResult = foreignKey("finalResultFK", finalResultId, resultQuery)(_.id)
   def timeTaken: Rep[FiniteDuration] = column[FiniteDuration]("trainingTimeNs")
@@ -104,6 +104,6 @@ final class RunsTable(tag: Tag) extends Table[Run](tag, "runs") {
   def naiveDecayStrategy = foreignKey("naiveDecayStrategyFK", naiveDecayStrategyId,
     naiveDecayStrategyQuery)(_.id.?)
 
-  def * : ProvenShape[Run] = (id, model, testCaseName, firstHiddenLayerSize, initialLearningRate, epochsTaken, finalResultId,
+  def * : ProvenShape[Run] = (id, model, testCaseName, sampleSize, firstHiddenLayerSize, initialLearningRate, finalResultId,
     timeTaken, naiveDecayStrategyId).shaped <> (Run.tupled.apply, Run.unapply)
 }

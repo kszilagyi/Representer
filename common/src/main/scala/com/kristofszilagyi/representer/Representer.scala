@@ -135,14 +135,15 @@ object Representer {
     val db = Database.forConfig("representer")
     implicit val ec: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
     val cases: Traversable[TestCase] = Traversable(Multiplication)
-    val sampleSize = 100
+    val sampleSize = 500
 
     cases.foreach { testCase =>
       val training = testCase.trainingData(sampleSize)
       val test = testCase.testData(sampleSize)
       hiddenLayerSizes.map { hiddenLayerSize =>
         val (nn, metrics) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize)
-        val run = OORun(testCase.name, nn, hiddenLayerSize, 10, 10, metrics.toResult(Epoch(10)), 10.seconds,
+        val run = OORun(testCase.name, nn, sampleSize = sampleSize, firstHiddenLayerSize = hiddenLayerSize, initialLearningRate = 10,
+          metrics.toResult(Epoch(10)), 10.seconds,
           Some(OONaiveDecayStrategy(10)), Traversable(OOResult(10, 10, 10, 10, 10, 10, 10, 10, Epoch(10))))
         Await.result(run.write(db), 10.seconds)
       }
