@@ -8,8 +8,10 @@ import smile.classification.NeuralNetwork
 import smile.classification.NeuralNetwork.{ActivationFunction, ErrorFunction}
 import smile.{classification, validation}
 import TypeSafeEqualsOps._
+import com.kristofszilagyi.representer.tables.RunsTable._
+
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Await, ExecutionContextExecutor}
+import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 
 object Representer {
   private val logger = getLogger
@@ -140,12 +142,28 @@ object Representer {
     cases.foreach { testCase =>
       val training = testCase.trainingData(sampleSize)
       val test = testCase.testData(sampleSize)
-      hiddenLayerSizes.map { hiddenLayerSize =>
-        val (nn, metrics) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize)
-        val run = OORun(testCase.name, nn, sampleSize = sampleSize, firstHiddenLayerSize = hiddenLayerSize, initialLearningRate = 10,
-          metrics.toResult(Epoch(10)), 10.seconds,
-          Some(OONaiveDecayStrategy(10)), Traversable(OOResult(10, 10, 10, 10, 10, 10, 10, 10, Epoch(10))))
-        Await.result(run.write(db), 10.seconds)
+      hiddenLayerSizes.foreach { hiddenLayerSize =>
+        val checkIfDone = db.run(runsQuery.filter{r =>
+            r.testCaseName === testCase.name
+            r.sampleSize === sampleSize
+            r.firstHiddenLayerSize === hiddenLayerSize
+          }.result
+        )
+        val computeAndWrite = checkIfDone.flatMap { matchingRuns =>
+          if (matchingRuns.isEmpty) {
+            val (nn, metrics) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize)
+            val run = OORun(testCase.name, nn, sampleSize = sampleSize, firstHiddenLayerSize = hiddenLayerSize, initialLearningRate = 10,
+              metrics.toResult(Epoch(10)), 10.seconds,
+              Some(OONaiveDecayStrategy(10)), Traversable(OOResult(10, 10, 10, 10, 10, 10, 10, 10, Epoch(10))))
+            run.write(db)
+          } else if (matchingRuns.size ==== 1){
+            logger.info(s"Skipping ${testCase.name}, hiddenLayerSize = $hiddenLayerSize, sampleSize: $sampleSize")
+            Future.successful(())
+          } else {
+            Future.failed(new AssertionError(s"multiple matching runs: $matchingRuns"))
+          }
+        }
+        Await.result(computeAndWrite, 30.minutes)
       }
 
     }
