@@ -1,6 +1,6 @@
 package com.kristofszilagyi.representer
 
-import com.kristofszilagyi.representer.Common.{autoScale, hiddenLayerSizes}
+import com.kristofszilagyi.representer.Common.{autoScale, hiddenLayerSizes, learningRates}
 import com.kristofszilagyi.representer.tables._
 import org.log4s.getLogger
 import slick.jdbc.PostgresProfile.api._
@@ -43,9 +43,9 @@ object Representer {
 
 
   @SuppressWarnings(Array(Warts.Var))
-  private def adaptiveLearning(training: ScaledData, hiddenLayerSize: Int) = {
+  private def adaptiveLearning(training: ScaledData, hiddenLayerSize: Int, initialLearningRate: Double) = {
     val numOfAttributes = training.x.head.length
-    var learningRate = 0.1
+    var learningRate = initialLearningRate
     val model = classification.mlp(training.x, training.y, Array(numOfAttributes, hiddenLayerSize, 1),
       ErrorFunction.CROSS_ENTROPY, ActivationFunction.LOGISTIC_SIGMOID, eta = learningRate, epochs = 1)
     var f1s = Vector.empty[Double]
@@ -78,13 +78,15 @@ object Representer {
 
     model
   }
-  private def generateClassifier(training: ScaledData, hiddenLayerSize: Int, learningRateStrategy: LearningRateStrategy): NeuralNetwork = {
+  private def generateClassifier(training: ScaledData, hiddenLayerSize: Int, learningRateStrategy: LearningRateStrategy,
+                                 initialLearningRate: Double): NeuralNetwork = {
     val numOfAttributes = training.x.head.length
     learningRateStrategy match {
       case Constant =>
-        classification.mlp(training.x, training.y, Array(numOfAttributes, hiddenLayerSize, 1), ErrorFunction.CROSS_ENTROPY, ActivationFunction.LOGISTIC_SIGMOID)
+        classification.mlp(training.x, training.y, Array(numOfAttributes, hiddenLayerSize, 1), ErrorFunction.CROSS_ENTROPY,
+          ActivationFunction.LOGISTIC_SIGMOID, eta = initialLearningRate)
       case Adaptive =>
-        adaptiveLearning(training, hiddenLayerSize)
+        adaptiveLearning(training, hiddenLayerSize, initialLearningRate)
     }
   }
 
@@ -122,10 +124,10 @@ object Representer {
     AllMetrics(training = training, test = test)
   }
 
-  private def trainAndMeasureMetrics(training: Data, test: Data, hiddenLayerSize: Int): (NeuralNetwork, AllMetrics) = {
-    logger.info(s"Train $hiddenLayerSize")
+  private def trainAndMeasureMetrics(training: Data, test: Data, hiddenLayerSize: Int, initialLearningRate: Double): (NeuralNetwork, AllMetrics) = {
+    logger.info(s"Training. hiddenLayerSize: $hiddenLayerSize, initialLearningRate $initialLearningRate")
     val scaledAll = autoScale(training, test)
-    val classifier = generateClassifier(scaledAll.training, hiddenLayerSize = hiddenLayerSize, Adaptive)
+    val classifier = generateClassifier(scaledAll.training, hiddenLayerSize = hiddenLayerSize, Adaptive, initialLearningRate)
     (classifier, measureMetrics(classifier, scaledAll))
   }
 
@@ -143,27 +145,29 @@ object Representer {
       val training = testCase.trainingData(sampleSize)
       val test = testCase.testData(sampleSize)
       hiddenLayerSizes.foreach { hiddenLayerSize =>
-        val checkIfDone = db.run(runsQuery.filter{r =>
-            r.testCaseName === testCase.name
-            r.sampleSize === sampleSize
-            r.firstHiddenLayerSize === hiddenLayerSize
-          }.result
-        )
-        val computeAndWrite = checkIfDone.flatMap { matchingRuns =>
-          if (matchingRuns.isEmpty) {
-            val (nn, metrics) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize)
-            val run = OORun(testCase.name, nn, sampleSize = sampleSize, firstHiddenLayerSize = hiddenLayerSize, initialLearningRate = 10,
-              metrics.toResult(Epoch(10)), 10.seconds,
-              Some(OONaiveDecayStrategy(10)), Traversable(OOResult(10, 10, 10, 10, 10, 10, 10, 10, Epoch(10))))
-            run.write(db)
-          } else if (matchingRuns.size ==== 1){
-            logger.info(s"Skipping ${testCase.name}, hiddenLayerSize = $hiddenLayerSize, sampleSize: $sampleSize")
-            Future.successful(())
-          } else {
-            Future.failed(new AssertionError(s"multiple matching runs: $matchingRuns"))
+        learningRates.foreach { initialLearningRate =>
+          val checkIfDone = db.run(runsQuery.filter { r =>
+            r.testCaseName === testCase.name &&
+            r.sampleSize === sampleSize &&
+            r.firstHiddenLayerSize === hiddenLayerSize &&
+            r.initialLearningRate === initialLearningRate
+          }.result)
+          val computeAndWrite = checkIfDone.flatMap { matchingRuns =>
+            if (matchingRuns.isEmpty) {
+              val (nn, metrics) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize, initialLearningRate)
+              val run = OORun(testCase.name, nn, sampleSize = sampleSize, firstHiddenLayerSize = hiddenLayerSize, initialLearningRate = initialLearningRate,
+                metrics.toResult(Epoch(10)), 10.seconds,
+                Some(OONaiveDecayStrategy(10)), Traversable(OOResult(10, 10, 10, 10, 10, 10, 10, 10, Epoch(10))))
+              run.write(db)
+            } else if (matchingRuns.size ==== 1) {
+              logger.info(s"Skipping ${testCase.name.s}, hiddenLayerSize = $hiddenLayerSize, sampleSize: $sampleSize, learningRate: $initialLearningRate")
+              Future.successful(())
+            } else {
+              Future.failed(new AssertionError(s"multiple matching runs: $matchingRuns"))
+            }
           }
+          Await.result(computeAndWrite, 30.minutes)
         }
-        Await.result(computeAndWrite, 30.minutes)
       }
 
     }
