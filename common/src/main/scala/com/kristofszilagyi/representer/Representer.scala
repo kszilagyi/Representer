@@ -111,9 +111,8 @@ object Representer {
     val tn = countTN(truth, prediction)
     val fn = countFN(truth, prediction)
     val m = Metrics(tp = tp, fp = fp, tn = tn, fn = fn)
-    assert(m.f1 ==== f1)
+    assert(f1.isNaN || m.f1 ==== f1)
     m
-
   }
   private def measureMetrics(classifier: NeuralNetwork, scaledAll: ScaledAll): AllMetrics = {
     val training = measureMetrics(classifier, scaledAll.training)
