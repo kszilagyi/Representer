@@ -125,7 +125,6 @@ object Representer {
   }
 
   private def trainAndMeasureMetrics(training: Data, test: Data, hiddenLayerSize: Int, initialLearningRate: Double): (NeuralNetwork, AllMetrics) = {
-    logger.info(s"Training. hiddenLayerSize: $hiddenLayerSize, initialLearningRate $initialLearningRate")
     val scaledAll = autoScale(training, test)
     val classifier = generateClassifier(scaledAll.training, hiddenLayerSize = hiddenLayerSize, Adaptive, initialLearningRate)
     (classifier, measureMetrics(classifier, scaledAll))
@@ -154,13 +153,14 @@ object Representer {
           }.result)
           val computeAndWrite = checkIfDone.flatMap { matchingRuns =>
             if (matchingRuns.isEmpty) {
+              logger.info(s"Training ${testCase.name.s}. hiddenLayerSize: $hiddenLayerSize, sampleSize: $sampleSize, initialLearningRate $initialLearningRate")
               val (nn, metrics) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize, initialLearningRate)
               val run = OORun(testCase.name, nn, sampleSize = sampleSize, firstHiddenLayerSize = hiddenLayerSize, initialLearningRate = initialLearningRate,
                 metrics.toResult(Epoch(10)), 10.seconds,
                 Some(OONaiveDecayStrategy(10)), Traversable(OOResult(10, 10, 10, 10, 10, 10, 10, 10, Epoch(10))))
               run.write(db)
             } else if (matchingRuns.size ==== 1) {
-              logger.info(s"Skipping ${testCase.name.s}, hiddenLayerSize = $hiddenLayerSize, sampleSize: $sampleSize, learningRate: $initialLearningRate")
+              logger.info(s"Skipping ${testCase.name.s}, hiddenLayerSize = $hiddenLayerSize, sampleSize: $sampleSize, initialLearningRate: $initialLearningRate")
               Future.successful(())
             } else {
               Future.failed(new AssertionError(s"multiple matching runs: $matchingRuns"))
