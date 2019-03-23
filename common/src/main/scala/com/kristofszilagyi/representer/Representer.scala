@@ -135,6 +135,7 @@ object Representer {
     override def doubles: Array[Double] = Array(a, b)
   }
 
+  @SuppressWarnings(Array(Warts.IsInstanceOf))
   def main(args: Array[String]): Unit = {
     val db = Database.forConfig("representer")
     implicit val ec: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
