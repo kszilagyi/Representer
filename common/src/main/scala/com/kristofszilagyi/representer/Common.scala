@@ -19,7 +19,7 @@ object Common {
     }
   }
 
-  def learningRates: immutable.Seq[Double] = List(0.01, 0.1, 1)
+  def initialLearningRates: immutable.Seq[Double] = List(0.01, 0.1, 1)
 
   def teachScaler(training: Data): Scaler = {
     val trainingX = training.unscaledX

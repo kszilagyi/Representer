@@ -1,6 +1,7 @@
 package com.kristofszilagyi.representer
 
-import com.kristofszilagyi.representer.Common.{autoScale, hiddenLayerSizes, learningRates}
+import com.kristofszilagyi.representer.Common.{autoScale, hiddenLayerSizes, initialLearningRates}
+import com.kristofszilagyi.representer.LearningRateStrategy._
 import com.kristofszilagyi.representer.TypeSafeEqualsOps._
 import com.kristofszilagyi.representer.tables.RunsTable._
 import com.kristofszilagyi.representer.tables._
@@ -37,13 +38,8 @@ object Representer {
       epoch = epoch)
   }
 
-  sealed trait LearningRateStrategy
-  final case object Constant extends LearningRateStrategy
-  final case object Adaptive extends LearningRateStrategy
-
-
   @SuppressWarnings(Array(Warts.Var))
-  private def adaptiveLearning(training: ScaledData, hiddenLayerSize: Int, initialLearningRate: Double) = {
+  private def adaptiveLearning(training: ScaledData, hiddenLayerSize: Int, initialLearningRate: Double, decayRate: Double) = {
     val numOfAttributes = training.x.head.length
     var learningRate = initialLearningRate
     val model = classification.mlp(training.x, training.y, Array(numOfAttributes, hiddenLayerSize, 1),
@@ -62,7 +58,7 @@ object Representer {
       f1s :+= metrics.f1
       logger.debug(s"Current f1 is (epoch $epoch): ${metrics.f1}")
       if (f1s.size > 6 && f1s(epoch - 6) >= f1s(epoch)) {
-        learningRate *= 0.9995
+        learningRate *= decayRate
         model.setLearningRate(learningRate)
         logger.debug(s"Reducing learning rate: $learningRate")
       }
@@ -85,8 +81,8 @@ object Representer {
       case Constant =>
         ClassifierWithLastEpoch(classification.mlp(training.x, training.y, Array(numOfAttributes, hiddenLayerSize, 1), ErrorFunction.CROSS_ENTROPY,
           ActivationFunction.LOGISTIC_SIGMOID, eta = initialLearningRate), Epoch(25 - 1))
-      case Adaptive =>
-        adaptiveLearning(training, hiddenLayerSize, initialLearningRate)
+      case NaiveDecay(decayRate) =>
+        adaptiveLearning(training, hiddenLayerSize, initialLearningRate, decayRate)
     }
   }
 
@@ -124,10 +120,10 @@ object Representer {
     AllMetrics(training = training, test = test)
   }
 
-  private def trainAndMeasureMetrics(training: Data, test: Data, hiddenLayerSize: Int, initialLearningRate: Double) = {
+  private def trainAndMeasureMetrics(training: Data, test: Data, hiddenLayerSize: Int, learningRateStrategy: LearningRateStrategy, initialLearningRate: Double) = {
     val scaledAll = autoScale(training, test)
     val start = System.nanoTime()
-    val classifierWithLastEpoch = generateClassifier(scaledAll.training, hiddenLayerSize = hiddenLayerSize, Adaptive, initialLearningRate)
+    val classifierWithLastEpoch = generateClassifier(scaledAll.training, hiddenLayerSize = hiddenLayerSize, learningRateStrategy, initialLearningRate)
     val end = System.nanoTime()
     (classifierWithLastEpoch.classifier,
       measureMetrics(classifierWithLastEpoch.classifier, scaledAll).toResult(classifierWithLastEpoch.lastEpoch),
@@ -149,32 +145,37 @@ object Representer {
       val training = testCase.trainingData(sampleSize)
       val test = testCase.testData(sampleSize)
       hiddenLayerSizes.foreach { hiddenLayerSize =>
-        learningRates.foreach { initialLearningRate =>
-          val checkIfDone = db.run(runsQuery.filter { r =>
-            r.testCaseName === testCase.name &&
-            r.sampleSize === sampleSize &&
-            r.firstHiddenLayerSize === hiddenLayerSize &&
-            r.initialLearningRate === initialLearningRate
-          }.result)
-          val computeAndWrite = checkIfDone.flatMap { matchingRuns =>
-            if (matchingRuns.isEmpty) {
-              logger.info(s"Training ${testCase.name.s}. hiddenLayerSize: $hiddenLayerSize, sampleSize: $sampleSize, initialLearningRate $initialLearningRate")
-              val (nn, metrics, timeTook) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize, initialLearningRate)
-              val run = OORun(testCase.name, nn, sampleSize = sampleSize, firstHiddenLayerSize = hiddenLayerSize, initialLearningRate = initialLearningRate,
-                metrics, timeTook,
-                Some(OONaiveDecayStrategy(10)), Traversable(OOResult(10, 10, 10, 10, 10, 10, 10, 10, Epoch(10))))
-              run.write(db)
-            } else if (matchingRuns.size ==== 1) {
-              logger.info(s"Skipping ${testCase.name.s}, hiddenLayerSize = $hiddenLayerSize, sampleSize: $sampleSize, initialLearningRate: $initialLearningRate")
-              Future.successful(())
-            } else {
-              Future.failed(new AssertionError(s"multiple matching runs: $matchingRuns"))
+        initialLearningRates.foreach { initialLearningRate =>
+          learningStrategies.foreach { learningRateDecayStrategy =>
+            val checkIfDone = db.run(runsQuery.filter { r =>
+              r.testCaseName === testCase.name &&
+                r.sampleSize === sampleSize &&
+                r.firstHiddenLayerSize === hiddenLayerSize &&
+                r.initialLearningRate === initialLearningRate &&
+                ((r.naiveDecayStrategyId.isDefined && learningRateDecayStrategy.isInstanceOf[NaiveDecay]) ||
+                  (r.naiveDecayStrategyId.isEmpty && learningRateDecayStrategy ==== Constant))
+            }.result)
+            val computeAndWrite = checkIfDone.flatMap { matchingRuns =>
+              if (matchingRuns.isEmpty) {
+                logger.info(s"Training ${testCase.name.s}. hiddenLayerSize: $hiddenLayerSize, sampleSize: $sampleSize," +
+                  s" initialLearningRate $initialLearningRate, learningRateStrategy: $learningRateDecayStrategy")
+                val (nn, metrics, timeTook) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize, learningRateDecayStrategy, initialLearningRate)
+                val run = OORun(testCase.name, nn, sampleSize = sampleSize, firstHiddenLayerSize = hiddenLayerSize, initialLearningRate = initialLearningRate,
+                  metrics, timeTook,
+                  learningRateDecayStrategy.toRelational, Traversable(OOResult(10, 10, 10, 10, 10, 10, 10, 10, Epoch(10))))
+                run.write(db)
+              } else if (matchingRuns.size ==== 1) {
+                logger.info(s"Skipping ${testCase.name.s}, hiddenLayerSize = $hiddenLayerSize, sampleSize: $sampleSize, " +
+                  s"initialLearningRate: $initialLearningRate, learningRateStrategy: $learningRateDecayStrategy")
+                Future.successful(())
+              } else {
+                Future.failed(new AssertionError(s"multiple matching runs: $matchingRuns"))
+              }
             }
+            Await.result(computeAndWrite, 30.minutes)
           }
-          Await.result(computeAndWrite, 30.minutes)
         }
       }
-
     }
   }
 }

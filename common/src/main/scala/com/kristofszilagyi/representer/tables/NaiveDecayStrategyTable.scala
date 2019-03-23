@@ -9,9 +9,9 @@ object NaiveDecayStrategyId {
   val ignored = NaiveDecayStrategyId(-1)
 }
 
-final case class OONaiveDecayStrategy(multiplier: Double) {
+final case class OONaiveDecayStrategy(decayRate: Double) {
   // compile time check for being the same
-  def toRelational(id: NaiveDecayStrategyId): NaiveDecayStrategy = NaiveDecayStrategy(id, multiplier)
+  def toRelational(id: NaiveDecayStrategyId): NaiveDecayStrategy = NaiveDecayStrategy(id, decayRate)
 }
 
 
@@ -21,9 +21,9 @@ final case class NaiveDecayStrategy(id: NaiveDecayStrategyId, multiplier: Double
 }
 final class NaiveDecayStrategyTable(tag: Tag) extends Table[NaiveDecayStrategy](tag, "naiveDecayStrategy") {
   def id: Rep[NaiveDecayStrategyId] = column[NaiveDecayStrategyId]("id", O.PrimaryKey, O.AutoInc)
-  def multiplier: Rep[Double] = column[Double]("multiplier")
+  def decayRate: Rep[Double] = column[Double]("decayRate")
 
-  def * : ProvenShape[NaiveDecayStrategy] = (id, multiplier).shaped <> (NaiveDecayStrategy.tupled.apply, NaiveDecayStrategy.unapply)
+  def * : ProvenShape[NaiveDecayStrategy] = (id, decayRate).shaped <> (NaiveDecayStrategy.tupled.apply, NaiveDecayStrategy.unapply)
 }
 
 object NaiveDecayStrategyTable {
