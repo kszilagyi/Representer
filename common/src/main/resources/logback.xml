@@ -12,13 +12,18 @@
     <encoder>
         <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
     </encoder>
+    <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+        <level>INFO</level>
+    </filter>
 </appender>
 
-<logger name="file" level="debug">
+<logger name="smile" level="warn">
     <appender-ref ref="FILE" />
+    <appender-ref ref="STDOUT" />
 </logger>
 
-<root level="info">
+<root level="debug">
+    <appender-ref ref="FILE" />
     <appender-ref ref="STDOUT" />
 </root>
 </configuration>
