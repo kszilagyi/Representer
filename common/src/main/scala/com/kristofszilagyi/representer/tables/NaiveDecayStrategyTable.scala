@@ -6,7 +6,7 @@ import slick.lifted.ProvenShape
 
 object NaiveDecayStrategyId {
   implicit val jdbcType: JdbcType[NaiveDecayStrategyId] = MappedColumnType.base[NaiveDecayStrategyId, Int](_.i, NaiveDecayStrategyId.apply)
-  final val ignored = NaiveDecayStrategyId(-1)
+  val ignored = NaiveDecayStrategyId(-1)
 }
 
 final case class OONaiveDecayStrategy(multiplier: Double) {

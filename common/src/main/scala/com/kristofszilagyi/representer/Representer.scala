@@ -20,7 +20,7 @@ object Representer {
     def doubles: Array[Double]
   }
   final case class FeaturesWithResults(features: Features, result: Boolean)
-
+  final case class ClassifierWithLastEpoch(classifier: NeuralNetwork, lastEpoch: Epoch)
 
   final case class Metrics(tp: Int, fp: Int, tn: Int, fn: Int) {
     def f1: Double = {
@@ -76,15 +76,15 @@ object Representer {
     }
 
 
-    model
+    ClassifierWithLastEpoch(model, Epoch(epoch - 1))
   }
   private def generateClassifier(training: ScaledData, hiddenLayerSize: Int, learningRateStrategy: LearningRateStrategy,
-                                 initialLearningRate: Double): NeuralNetwork = {
+                                 initialLearningRate: Double): ClassifierWithLastEpoch = {
     val numOfAttributes = training.x.head.length
     learningRateStrategy match {
       case Constant =>
-        classification.mlp(training.x, training.y, Array(numOfAttributes, hiddenLayerSize, 1), ErrorFunction.CROSS_ENTROPY,
-          ActivationFunction.LOGISTIC_SIGMOID, eta = initialLearningRate)
+        ClassifierWithLastEpoch(classification.mlp(training.x, training.y, Array(numOfAttributes, hiddenLayerSize, 1), ErrorFunction.CROSS_ENTROPY,
+          ActivationFunction.LOGISTIC_SIGMOID, eta = initialLearningRate), Epoch(25 - 1))
       case Adaptive =>
         adaptiveLearning(training, hiddenLayerSize, initialLearningRate)
     }
@@ -124,10 +124,10 @@ object Representer {
     AllMetrics(training = training, test = test)
   }
 
-  private def trainAndMeasureMetrics(training: Data, test: Data, hiddenLayerSize: Int, initialLearningRate: Double): (NeuralNetwork, AllMetrics) = {
+  private def trainAndMeasureMetrics(training: Data, test: Data, hiddenLayerSize: Int, initialLearningRate: Double): (NeuralNetwork, OOResult) = {
     val scaledAll = autoScale(training, test)
-    val classifier = generateClassifier(scaledAll.training, hiddenLayerSize = hiddenLayerSize, Adaptive, initialLearningRate)
-    (classifier, measureMetrics(classifier, scaledAll))
+    val classifierWithLastEpoch = generateClassifier(scaledAll.training, hiddenLayerSize = hiddenLayerSize, Adaptive, initialLearningRate)
+    (classifierWithLastEpoch.classifier, measureMetrics(classifierWithLastEpoch.classifier, scaledAll).toResult(classifierWithLastEpoch.lastEpoch))
   }
 
   final case class Input(a: Double, b: Double) extends Features {
@@ -156,7 +156,7 @@ object Representer {
               logger.info(s"Training ${testCase.name.s}. hiddenLayerSize: $hiddenLayerSize, sampleSize: $sampleSize, initialLearningRate $initialLearningRate")
               val (nn, metrics) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize, initialLearningRate)
               val run = OORun(testCase.name, nn, sampleSize = sampleSize, firstHiddenLayerSize = hiddenLayerSize, initialLearningRate = initialLearningRate,
-                metrics.toResult(Epoch(10)), 10.seconds,
+                metrics, 10.seconds,
                 Some(OONaiveDecayStrategy(10)), Traversable(OOResult(10, 10, 10, 10, 10, 10, 10, 10, Epoch(10))))
               run.write(db)
             } else if (matchingRuns.size ==== 1) {
