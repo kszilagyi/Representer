@@ -140,7 +140,7 @@ object Representer {
     val db = Database.forConfig("representer")
     implicit val ec: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
     val cases: Traversable[TestCase] = Traversable(Multiplication)
-    val sampleSize = 500
+    val sampleSize = 1000
 
     cases.foreach { testCase =>
       val training = testCase.trainingData(sampleSize)
