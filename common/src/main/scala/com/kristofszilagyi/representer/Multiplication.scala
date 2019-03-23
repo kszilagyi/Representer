@@ -13,4 +13,6 @@ object Multiplication extends TestCase {
       FeaturesWithResults(input, a * b > 50)
     }
   }
+
+  override def name: TestCaseName = TestCaseName("Multiplication")
 }

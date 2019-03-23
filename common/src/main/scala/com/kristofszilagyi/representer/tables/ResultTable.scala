@@ -9,20 +9,29 @@ object ResultId {
 }
 final case class ResultId(i: Int)
 
-final case class OOResult(truePositiveCount: Int, falsePositiveCount: Int, trueNegativeCount: Int,
-                          falseNegativeCount: Int, epoch: Int) {
-  // main reason for this is to check if the fields are the same
+object Epoch {
+  implicit val ordering: Ordering[Epoch] = Ordering.by[Epoch, Int](_.i)
+  implicit val jdbcType: JdbcType[Epoch] = MappedColumnType.base[Epoch, Int](_.i, Epoch.apply)
+}
+
+final case class Epoch(i: Int)
+
+final case class OOResult(tpTrain: Int, fpTrain: Int, tnTrain: Int,
+                          fnTrain: Int, tpTest: Int, fpTest: Int, tnTest: Int,
+                          fnTest: Int, epoch: Epoch) {
   def toRelational(id: ResultId): Result = {
-    Result(id, truePositiveCount = truePositiveCount, falsePositiveCount = falsePositiveCount,
-      trueNegativeCount = trueNegativeCount,
-      falseNegativeCount = falseNegativeCount, epoch = epoch)
+    Result(id, tpTrain = tpTrain, fpTrain = fpTrain, tnTrain = tnTrain,
+      fnTrain = fnTrain, tpTest = tpTest, fpTest = fpTest, tnTest = tnTest,
+      fnTest = fnTest, epoch = epoch)
   }
 }
 
-final case class Result(id: ResultId, truePositiveCount: Int, falsePositiveCount: Int, trueNegativeCount: Int,
-                        falseNegativeCount: Int, epoch: Int) {
-  def toOO: OOResult = OOResult(truePositiveCount = truePositiveCount, falsePositiveCount = falsePositiveCount,
-    trueNegativeCount = trueNegativeCount, falseNegativeCount = falseNegativeCount, epoch = epoch)
+final case class Result(id: ResultId, tpTrain: Int, fpTrain: Int, tnTrain: Int,
+                        fnTrain: Int, tpTest: Int, fpTest: Int, tnTest: Int,
+                        fnTest: Int, epoch: Epoch) {
+  def toOO: OOResult = OOResult(tpTrain = tpTrain, fpTrain = fpTrain, tnTrain = tnTrain,
+    fnTrain = fnTrain, tpTest = tpTest, fpTest = fpTest, tnTest = tnTest,
+    fnTest = fnTest, epoch = epoch)
 }
 
 object ResultTable {
@@ -30,11 +39,15 @@ object ResultTable {
 }
 final class ResultTable(tag: Tag) extends Table[Result](tag, "result") {
   def id: Rep[ResultId] = column[ResultId]("id", O.PrimaryKey, O.AutoInc)
-  def truePositiveCount: Rep[Int] = column[Int]("truePositiveCount")
-  def falsePositiveCount: Rep[Int] = column[Int]("falsePositiveCount")
-  def trueNegativeCount: Rep[Int] = column[Int]("trueNegativeCount")
-  def falseNegativeCount: Rep[Int] = column[Int]("falseNegativeCount")
-  def epoch: Rep[Int] = column[Int]("epoch")
-  def * : ProvenShape[Result] = (id, truePositiveCount, falsePositiveCount, trueNegativeCount,
-    falseNegativeCount, epoch).shaped <> (Result.tupled.apply, Result.unapply)
+  def tpTrain: Rep[Int] = column[Int]("tpTrain")
+  def fpTrain: Rep[Int] = column[Int]("fpTrain")
+  def tnTrain: Rep[Int] = column[Int]("tnTrain")
+  def fnTrain: Rep[Int] = column[Int]("fnTrain")
+  def tpTest: Rep[Int] = column[Int]("tpTest")
+  def fpTest: Rep[Int] = column[Int]("fpTest")
+  def tnTest: Rep[Int] = column[Int]("tnTest")
+  def fnTest: Rep[Int] = column[Int]("fnTest")
+  def epoch: Rep[Epoch] = column[Epoch]("epoch")
+  def * : ProvenShape[Result] = (id, tpTrain, fpTrain, tnTrain, fnTrain, tpTest, fpTest, tnTest,
+    fnTest, epoch).shaped <> (Result.tupled.apply, Result.unapply)
 }
