@@ -44,7 +44,7 @@ final case class RunId(i: Int)
 
 final case class Run(id: RunId, testCaseName: TestCaseName, model: Classifier[Array[Double]], sampleSize: Int, firstHiddenLayerSize: Int,
                      initialLearningRate: Double, timeTaken: FiniteDuration, decayStrategy: LearningRateDecayStrategyName,
-                     learningRateDecayRate: Double,
+                     learningRateDecayRate: Double, maxEpoch: Int,
                      tpTrain: Int, fpTrain: Int, tnTrain: Int,
                      fnTrain: Int, tpTest: Int, fpTest: Int, tnTest: Int,
                      fnTest: Int, lastEpoch: Epoch)
@@ -63,6 +63,7 @@ final class RunsTable(tag: Tag) extends Table[Run](tag, "runs") {
   def timeTaken: Rep[FiniteDuration] = column[FiniteDuration]("trainingTimeNs")
   def decayStrategy: Rep[LearningRateDecayStrategyName] = column[LearningRateDecayStrategyName]("learningRateDecayStrategy")
   def learningRateDecayRate: Rep[Double] = column[Double]("learningRateDecayRate")
+  def maxEpochs: Rep[Int] = column[Int]("maxEpochs")
   def tpTrain: Rep[Int] = column[Int]("tpTrain")
   def fpTrain: Rep[Int] = column[Int]("fpTrain")
   def tnTrain: Rep[Int] = column[Int]("tnTrain")
@@ -74,6 +75,6 @@ final class RunsTable(tag: Tag) extends Table[Run](tag, "runs") {
   def lastEpoch: Rep[Epoch] = column[Epoch]("lastEpoch")
 
   def * : ProvenShape[Run] = (id, testCaseName, model, sampleSize, firstHiddenLayerSize, initialLearningRate, timeTaken,
-    decayStrategy, learningRateDecayRate, tpTrain, fpTrain, tnTrain, fnTrain, tpTest, fpTest, tnTest, fnTest,
+    decayStrategy, learningRateDecayRate, maxEpochs, tpTrain, fpTrain, tnTrain, fnTrain, tpTest, fpTest, tnTest, fnTest,
     lastEpoch).shaped <> (Run.tupled.apply, Run.unapply)
 }

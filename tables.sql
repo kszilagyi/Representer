@@ -13,6 +13,7 @@ CREATE TABLE runs
   "initialLearningRate" double precision NOT NULL,
   "learningRateDecayStrategy" text NOT NULL,
   "learningRateDecayRate" double precision,
+  "maxEpochs" integer NOT NULL,
   "trainingTimeNs" bigint NOT NULL,
   "lastEpoch" integer NOT NULL,
   "tpTrain" integer NOT NULL,
@@ -24,7 +25,7 @@ CREATE TABLE runs
   "tnTest" integer NOT NULL,
   "fnTest" integer NOT NULL,
   model text NOT NULL
-)
+);
 
 
 -- View: public."resultView"

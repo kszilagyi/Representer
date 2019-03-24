@@ -34,7 +34,7 @@ object Representer {
   private final case class AllMetrics(training: Metrics, test: Metrics)
 
   @SuppressWarnings(Array(Warts.Var))
-  private def adaptiveLearning(training: ScaledData, hiddenLayerSize: Int, initialLearningRate: Double, decayRate: Double) = {
+  private def adaptiveLearning(training: ScaledData, hiddenLayerSize: Int, initialLearningRate: Double, decayRate: Double, maxEpochs: Int) = {
     val numOfAttributes = training.x.head.length
     var learningRate = initialLearningRate
     val model = classification.mlp(training.x, training.y, Array(numOfAttributes, hiddenLayerSize, 1),
@@ -47,7 +47,7 @@ object Representer {
 
     var epoch = 1 //above is 0
     var failedToImproveCount = 0
-    while(failedToImproveCount < 100) {
+    while(failedToImproveCount < 100 && epoch < maxEpochs) {
       model.learn(training.x, training.y)
       val metrics = measureMetrics(model, training)
       f1s :+= metrics.f1
@@ -70,14 +70,14 @@ object Representer {
     ClassifierWithLastEpoch(model, Epoch(epoch - 1))
   }
   private def generateClassifier(training: ScaledData, hiddenLayerSize: Int, learningRateStrategy: LearningRateDecayStrategy,
-                                 initialLearningRate: Double): ClassifierWithLastEpoch = {
+                                 initialLearningRate: Double, maxEpochs: Int): ClassifierWithLastEpoch = {
     val numOfAttributes = training.x.head.length
     learningRateStrategy match {
       case Constant =>
         ClassifierWithLastEpoch(classification.mlp(training.x, training.y, Array(numOfAttributes, hiddenLayerSize, 1), ErrorFunction.CROSS_ENTROPY,
-          ActivationFunction.LOGISTIC_SIGMOID, eta = initialLearningRate), Epoch(25 - 1))
+          ActivationFunction.LOGISTIC_SIGMOID, eta = initialLearningRate, epochs = maxEpochs), Epoch(maxEpochs - 1))
       case NaiveDecay(decayRate) =>
-        adaptiveLearning(training, hiddenLayerSize, initialLearningRate, decayRate)
+        adaptiveLearning(training, hiddenLayerSize, initialLearningRate, decayRate, maxEpochs)
     }
   }
 
@@ -115,10 +115,11 @@ object Representer {
     AllMetrics(training = training, test = test)
   }
 
-  private def trainAndMeasureMetrics(training: Data, test: Data, hiddenLayerSize: Int, learningRateStrategy: LearningRateDecayStrategy, initialLearningRate: Double) = {
+  private def trainAndMeasureMetrics(training: Data, test: Data, hiddenLayerSize: Int, learningRateStrategy: LearningRateDecayStrategy,
+                                     initialLearningRate: Double, maxEpochs: Int) = {
     val scaledAll = autoScale(training, test)
     val start = System.nanoTime()
-    val classifierWithLastEpoch = generateClassifier(scaledAll.training, hiddenLayerSize = hiddenLayerSize, learningRateStrategy, initialLearningRate)
+    val classifierWithLastEpoch = generateClassifier(scaledAll.training, hiddenLayerSize = hiddenLayerSize, learningRateStrategy, initialLearningRate, maxEpochs)
     val end = System.nanoTime()
     (classifierWithLastEpoch,
       measureMetrics(classifierWithLastEpoch.classifier, scaledAll),
@@ -143,43 +144,50 @@ object Representer {
       hiddenLayerSizes.foreach { hiddenLayerSize =>
         initialLearningRates.foreach { initialLearningRate =>
           learningStrategies.foreach { learningRateDecayStrategy =>
-            val checkIfDone = db.run(runsQuery.filter { r =>
-              r.testCaseName === testCase.name &&
-                r.sampleSize === sampleSize &&
-                r.firstHiddenLayerSize === hiddenLayerSize &&
-                r.initialLearningRate === initialLearningRate &&
-                r.decayStrategy === learningRateDecayStrategy.name &&
-                r.learningRateDecayRate === learningRateDecayStrategy.decayRate
-            }.result)
-            val computeAndWrite = checkIfDone.flatMap { matchingRuns =>
-              val paramsString = s"${testCase.name.s}: hiddenLayerSize=$hiddenLayerSize, sampleSize=$sampleSize," +
-                                 s" initialLearningRate=$initialLearningRate, learningRateStrategy=${learningRateDecayStrategy.name}," +
-                                 s" learningDecayRate:${learningRateDecayStrategy.decayRate}"
-              if (matchingRuns.isEmpty) {
-                logger.info(s"Training $paramsString")
-                val (nnWithLastEpoch, metrics, timeTook) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize, learningRateDecayStrategy, initialLearningRate)
-                val run = Run(id = RunId.ignored, testCaseName = testCase.name, model = nnWithLastEpoch.classifier,
-                  sampleSize = sampleSize, firstHiddenLayerSize = hiddenLayerSize, initialLearningRate = initialLearningRate,
-                  timeTaken = timeTook, decayStrategy = learningRateDecayStrategy.name, learningRateDecayRate = learningRateDecayStrategy.decayRate,
-                  tpTrain = metrics.training.tp,
-                  fpTrain = metrics.training.fp,
-                  tnTrain = metrics.training.tn,
-                  fnTrain = metrics.training.fn,
-                  tpTest = metrics.test.tp,
-                  fpTest = metrics.test.fp,
-                  tnTest = metrics.test.tn,
-                  fnTest = metrics.test.fn,
-                  lastEpoch = nnWithLastEpoch.lastEpoch
-                )
-                db.run(runsQuery += run)
-              } else if (matchingRuns.size ==== 1) {
-                logger.info(s"Skipping $paramsString")
-                Future.successful(())
-              } else {
-                Future.failed(new AssertionError(s"multiple matching runs: $matchingRuns"))
+            maxEpochs.foreach { maxEpochs =>
+              val checkIfDone = db.run(runsQuery.filter { r =>
+                r.testCaseName === testCase.name &&
+                  r.sampleSize === sampleSize &&
+                  r.firstHiddenLayerSize === hiddenLayerSize &&
+                  r.initialLearningRate === initialLearningRate &&
+                  r.decayStrategy === learningRateDecayStrategy.name &&
+                  r.learningRateDecayRate === learningRateDecayStrategy.decayRate &&
+                  r.maxEpochs === maxEpochs
+              }.result)
+              val computeAndWrite = checkIfDone.flatMap { matchingRuns =>
+                val paramsString = s"${testCase.name.s}: hiddenLayerSize=$hiddenLayerSize, sampleSize=$sampleSize," +
+                  s" initialLearningRate=$initialLearningRate, learningRateStrategy=${learningRateDecayStrategy.name}," +
+                  s" learningDecayRate:${learningRateDecayStrategy.decayRate}, maxEpochs: $maxEpochs"
+                if (matchingRuns.isEmpty) {
+                  logger.info(s"Training $paramsString")
+                  val (nnWithLastEpoch, metrics, timeTook) = trainAndMeasureMetrics(training, test,
+                    hiddenLayerSize = hiddenLayerSize,
+                    learningRateStrategy = learningRateDecayStrategy, initialLearningRate = initialLearningRate, maxEpochs = maxEpochs
+                  )
+                  val run = Run(id = RunId.ignored, testCaseName = testCase.name, model = nnWithLastEpoch.classifier,
+                    sampleSize = sampleSize, firstHiddenLayerSize = hiddenLayerSize, initialLearningRate = initialLearningRate,
+                    timeTaken = timeTook, decayStrategy = learningRateDecayStrategy.name,
+                    learningRateDecayRate = learningRateDecayStrategy.decayRate, maxEpoch = maxEpochs,
+                    tpTrain = metrics.training.tp,
+                    fpTrain = metrics.training.fp,
+                    tnTrain = metrics.training.tn,
+                    fnTrain = metrics.training.fn,
+                    tpTest = metrics.test.tp,
+                    fpTest = metrics.test.fp,
+                    tnTest = metrics.test.tn,
+                    fnTest = metrics.test.fn,
+                    lastEpoch = nnWithLastEpoch.lastEpoch
+                  )
+                  db.run(runsQuery += run)
+                } else if (matchingRuns.size ==== 1) {
+                  logger.info(s"Skipping $paramsString")
+                  Future.successful(())
+                } else {
+                  Future.failed(new AssertionError(s"multiple matching runs: $matchingRuns"))
+                }
               }
+              Await.result(computeAndWrite, 30.minutes)
             }
-            Await.result(computeAndWrite, 30.minutes)
           }
         }
       }

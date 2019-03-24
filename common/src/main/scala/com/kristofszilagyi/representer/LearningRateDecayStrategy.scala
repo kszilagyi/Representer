@@ -23,4 +23,6 @@ object LearningRateDecayStrategy extends {
   }
 
   def learningStrategies: Seq[LearningRateDecayStrategy] = List(Constant, NaiveDecay(0.9), NaiveDecay(0.99), NaiveDecay(0.999))
+
+  def maxEpochs = List(25, 500, 10000)
 }
