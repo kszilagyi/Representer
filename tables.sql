@@ -68,3 +68,25 @@ WITH (
 );
 ALTER TABLE public.runs
   OWNER TO representer;
+
+-- View: public."resultView"
+
+-- DROP VIEW public."resultView";
+
+CREATE OR REPLACE VIEW public."resultView" AS
+ SELECT runs.model,
+    runs."firstHiddenLayerSize",
+    runs."initialLearningRate",
+    runs."finalResult",
+    runs.id,
+    runs."naiveDecayStrategy",
+    runs."trainingTimeNs",
+    runs."testCaseName",
+    runs."sampleSize",
+    f1(prec => prec(tp => results."tpTest"::double precision, fp => results."fpTest"::double precision), recall => recall(tp => results."tpTest"::double precision, fn => results."fnTest"::double precision)) AS f1test
+   FROM runs,
+    results
+  WHERE runs."finalResult" = results.id;
+
+ALTER TABLE public."resultView"
+  OWNER TO representer;
