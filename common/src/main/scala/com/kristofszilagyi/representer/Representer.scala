@@ -1,7 +1,7 @@
 package com.kristofszilagyi.representer
 
 import com.kristofszilagyi.representer.Common.{autoScale, hiddenLayerSizes, initialLearningRates}
-import com.kristofszilagyi.representer.LearningRateStrategy._
+import com.kristofszilagyi.representer.LearningRateDecayStrategy._
 import com.kristofszilagyi.representer.TypeSafeEqualsOps._
 import com.kristofszilagyi.representer.tables.RunsTable._
 import com.kristofszilagyi.representer.tables._
@@ -31,12 +31,7 @@ object Representer {
     }
   }
 
-  private final case class AllMetrics(training: Metrics, test: Metrics) {
-    def toResult(epoch: Epoch): OOResult = OOResult(
-      tpTrain = training.tp, fpTrain = training.fp, tnTrain = training.tn, fnTrain = training.fn,
-      tpTest = test.tp, fpTest = test.fp, tnTest = test.tn, fnTest = test.fn,
-      epoch = epoch)
-  }
+  private final case class AllMetrics(training: Metrics, test: Metrics)
 
   @SuppressWarnings(Array(Warts.Var))
   private def adaptiveLearning(training: ScaledData, hiddenLayerSize: Int, initialLearningRate: Double, decayRate: Double) = {
@@ -74,7 +69,7 @@ object Representer {
 
     ClassifierWithLastEpoch(model, Epoch(epoch - 1))
   }
-  private def generateClassifier(training: ScaledData, hiddenLayerSize: Int, learningRateStrategy: LearningRateStrategy,
+  private def generateClassifier(training: ScaledData, hiddenLayerSize: Int, learningRateStrategy: LearningRateDecayStrategy,
                                  initialLearningRate: Double): ClassifierWithLastEpoch = {
     val numOfAttributes = training.x.head.length
     learningRateStrategy match {
@@ -120,13 +115,13 @@ object Representer {
     AllMetrics(training = training, test = test)
   }
 
-  private def trainAndMeasureMetrics(training: Data, test: Data, hiddenLayerSize: Int, learningRateStrategy: LearningRateStrategy, initialLearningRate: Double) = {
+  private def trainAndMeasureMetrics(training: Data, test: Data, hiddenLayerSize: Int, learningRateStrategy: LearningRateDecayStrategy, initialLearningRate: Double) = {
     val scaledAll = autoScale(training, test)
     val start = System.nanoTime()
     val classifierWithLastEpoch = generateClassifier(scaledAll.training, hiddenLayerSize = hiddenLayerSize, learningRateStrategy, initialLearningRate)
     val end = System.nanoTime()
-    (classifierWithLastEpoch.classifier,
-      measureMetrics(classifierWithLastEpoch.classifier, scaledAll).toResult(classifierWithLastEpoch.lastEpoch),
+    (classifierWithLastEpoch,
+      measureMetrics(classifierWithLastEpoch.classifier, scaledAll),
       Duration.fromNanos(end - start)
     )
   }
@@ -153,18 +148,30 @@ object Representer {
                 r.sampleSize === sampleSize &&
                 r.firstHiddenLayerSize === hiddenLayerSize &&
                 r.initialLearningRate === initialLearningRate &&
-                ((r.naiveDecayStrategyId.isDefined && learningRateDecayStrategy.isInstanceOf[NaiveDecay]) ||
-                  (r.naiveDecayStrategyId.isEmpty && learningRateDecayStrategy ==== Constant))
+                r.decayStrategy === learningRateDecayStrategy.name &&
+                r.learningRateDecayRate === learningRateDecayStrategy.decayRate
             }.result)
             val computeAndWrite = checkIfDone.flatMap { matchingRuns =>
               val paramsString = s"${testCase.name.s}: hiddenLayerSize=$hiddenLayerSize, sampleSize=$sampleSize," +
-                                 s" initialLearningRate=$initialLearningRate, learningRateStrategy=${learningRateDecayStrategy.name}"
+                                 s" initialLearningRate=$initialLearningRate, learningRateStrategy=${learningRateDecayStrategy.name}," +
+                                 s" learningDecayRate:${learningRateDecayStrategy.decayRate}"
               if (matchingRuns.isEmpty) {
                 logger.info(s"Training $paramsString")
-                val (nn, metrics, timeTook) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize, learningRateDecayStrategy, initialLearningRate)
-                val run = OORun(testCase.name, nn, sampleSize = sampleSize, firstHiddenLayerSize = hiddenLayerSize, initialLearningRate = initialLearningRate,
-                  metrics, timeTook, learningRateDecayStrategy.toRelational)
-                run.write(db)
+                val (nnWithLastEpoch, metrics, timeTook) = trainAndMeasureMetrics(training, test, hiddenLayerSize = hiddenLayerSize, learningRateDecayStrategy, initialLearningRate)
+                val run = Run(id = RunId.ignored, testCaseName = testCase.name, model = nnWithLastEpoch.classifier,
+                  sampleSize = sampleSize, firstHiddenLayerSize = hiddenLayerSize, initialLearningRate = initialLearningRate,
+                  timeTaken = timeTook, decayStrategy = learningRateDecayStrategy.name, learningRateDecayRate = learningRateDecayStrategy.decayRate,
+                  tpTrain = metrics.training.tp,
+                  fpTrain = metrics.training.fp,
+                  tnTrain = metrics.training.tn,
+                  fnTrain = metrics.training.fn,
+                  tpTest = metrics.test.tp,
+                  fpTest = metrics.test.fp,
+                  tnTest = metrics.test.tn,
+                  fnTest = metrics.test.fn,
+                  lastEpoch = nnWithLastEpoch.lastEpoch
+                )
+                db.run(runsQuery += run)
               } else if (matchingRuns.size ==== 1) {
                 logger.info(s"Skipping $paramsString")
                 Future.successful(())
