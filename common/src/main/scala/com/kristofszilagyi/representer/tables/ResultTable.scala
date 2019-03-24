@@ -37,7 +37,7 @@ final case class Result(id: ResultId, tpTrain: Int, fpTrain: Int, tnTrain: Int,
 object ResultTable {
   val resultQuery =  TableQuery[ResultTable]
 }
-final class ResultTable(tag: Tag) extends Table[Result](tag, "result") {
+final class ResultTable(tag: Tag) extends Table[Result](tag, "results") {
   def id: Rep[ResultId] = column[ResultId]("id", O.PrimaryKey, O.AutoInc)
   def tpTrain: Rep[Int] = column[Int]("tpTrain")
   def fpTrain: Rep[Int] = column[Int]("fpTrain")
