@@ -19,17 +19,17 @@ object TestCaseName {
 final case class TestCaseName(s: String)
 
 trait TestCase {
-  def trainingData(size: Int): Data = {
+  def trainingData(size: Int, biased: BiasParams): Data = {
     val random = new Random(1)
-    Data(generateData(random, size))
+    Data(generateData(random, size, biased))
   }
 
   def testData(size: Int): Data = {
     val random = new Random(2)
-    Data(generateData(random, size))
+    Data(generateData(random, size, BiasParams(ratio = 0, radius = Double.NaN)))
   }
 
-  def generateData(random: Random, size: Int): immutable.IndexedSeq[FeaturesWithResults]
+  def generateData(random: Random, size: Int, biased: BiasParams): immutable.IndexedSeq[FeaturesWithResults]
 
   def name: TestCaseName
 }

@@ -7,7 +7,7 @@ import smile.feature.Scaler
 import scala.collection.immutable
 final class ScaledData(val x: Array[Array[Double]], val y: Array[Int])
 final case class ScaledAll(training: ScaledData, test: ScaledData)
-
+final case class BiasParams(ratio: Double, radius: Double)
 object Common {
   def modelPath(hiddenLayerSize: Int): Path = {
     Paths.get(s"$hiddenLayerSize.xml")
@@ -20,6 +20,14 @@ object Common {
   }
 
   def initialLearningRates: immutable.Seq[Double] = List(0.01, 0.1, 1)
+
+  def biasParamPairs: Seq[BiasParams] = List(
+    BiasParams(ratio = 0.0, radius = 1000000),
+    BiasParams(ratio = 0.9, radius = 1),
+    BiasParams(ratio = 0.9, radius = 5),
+    BiasParams(ratio = 1.0, radius = 1),
+    BiasParams(ratio = 1.0, radius = 5)
+  )
 
   def teachScaler(training: Data): Scaler = {
     val trainingX = training.unscaledX
