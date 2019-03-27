@@ -35,6 +35,6 @@ CREATE TABLE runs
 CREATE OR REPLACE VIEW "resultView" AS
  SELECT *,
     f1(prec => prec(tp => "tpTrain", fp => "fpTrain"), recall => recall(tp => "tpTrain", fn => "fnTrain")) AS "f1Train",
-    f1(prec => prec(tp => "tpTest", fp => "fpTest"), recall => recall(tp => "tpTest", fn => "fnTest")) AS "f1test"
+    f1(prec => prec(tp => "tpTest", fp => "fpTest"), recall => recall(tp => "tpTest", fn => "fnTest")) AS "f1Test"
    FROM runs;
 
