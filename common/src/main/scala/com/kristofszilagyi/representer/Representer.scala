@@ -136,7 +136,7 @@ object Representer {
   def main(args: Array[String]): Unit = {
     val db = Database.forConfig("representer")
     implicit val ec: ExecutionContext = new SyncEc() // this makes sense because the db has it's own thread pool which makes the whole thing parallel
-    val cases: Traversable[TestCase] = Traversable(Multiplication, Addition)
+    val cases: Traversable[TestCase] = Traversable(Multiplication, Addition, Equality)
     val sampleSize =1000
 
     val futures = cases.flatMap { testCase =>
