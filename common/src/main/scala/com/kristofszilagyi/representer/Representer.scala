@@ -4,6 +4,7 @@ import com.kristofszilagyi.representer.Common.{autoScale, biasParamPairs, hidden
 import com.kristofszilagyi.representer.LearningRateDecayStrategy._
 import com.kristofszilagyi.representer.TypeSafeEqualsOps._
 import com.kristofszilagyi.representer.Warts.{IsInstanceOf, Var, discard}
+import com.kristofszilagyi.representer.cases.{Addition, Equality, Multiplication}
 import com.kristofszilagyi.representer.tables.RunsTable._
 import com.kristofszilagyi.representer.tables._
 import org.log4s.getLogger

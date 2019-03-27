@@ -1,22 +1,21 @@
-package com.kristofszilagyi.representer
+package com.kristofszilagyi.representer.cases
 
 import com.kristofszilagyi.representer.Representer.{FeaturesWithResults, Input}
-import com.kristofszilagyi.representer.TypeSafeEqualsOps._
 import com.kristofszilagyi.representer.Warts.Var
-
+import com.kristofszilagyi.representer.{BiasParams, TestCase, TestCaseName}
+import com.kristofszilagyi.representer.TypeSafeEqualsOps._
 import scala.collection.immutable
 import scala.util.Random
-//todo test bias with plotting
 
-object Equality extends TestCase {
+object Multiplication extends TestCase {
   def generateData(random: Random, size: Int, biasParams: BiasParams): immutable.IndexedSeq[FeaturesWithResults] = {
     val unbiasedPercentage = 1 - biasParams.ratio
-    val epsilon = 0.01
+    val cutTarget = 50
     val unbiased = (1 to Math.round(size.toDouble * unbiasedPercentage).toInt).map { _ =>
       val a = random.nextDouble() * 10
       val b = random.nextDouble() * 10
       val input = Input(a, b)
-      FeaturesWithResults(input, math.abs(a - b) < epsilon)
+      FeaturesWithResults(input, a * b > cutTarget)
     }
     @SuppressWarnings(Array(Var))
     var biased = List.empty[FeaturesWithResults]
@@ -24,9 +23,10 @@ object Equality extends TestCase {
       val a = random.nextDouble() * 10
       val b = random.nextDouble() * 10
       val input = Input(a, b)
-      val result = math.abs(a - b)
-      if (result < biasParams.radius) {
-        biased = FeaturesWithResults(input, result < epsilon) +: biased
+      val result = a * b
+      val distanceFromTarget = math.abs(result - cutTarget)
+      if (distanceFromTarget < biasParams.radius) {
+        biased = FeaturesWithResults(input, result > cutTarget) +: biased
       }
     }
 
@@ -35,5 +35,5 @@ object Equality extends TestCase {
     all
   }
 
-  override def name: TestCaseName = TestCaseName("Equality")
+  override def name: TestCaseName = TestCaseName("Multiplication")
 }
