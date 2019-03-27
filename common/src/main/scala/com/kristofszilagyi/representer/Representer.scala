@@ -138,9 +138,12 @@ object Representer {
     val dbRead = Database.forConfig("representerRead")
     val dbWrite = Database.forConfig("representerWrite")
     implicit val ec: ExecutionContext = new SyncEc() // this makes sense because the db has it's own thread pool which makes the whole thing parallel
+    val asyncEc: ExecutionContext = ExecutionContext.Implicits.global // this makes sense because the db has it's own thread pool which makes the whole thing parallel
     val cases: Traversable[TestCase] = Traversable(Multiplication, Addition, Equality)
     val sampleSize =1000
-
+    logger.info(s"Reading db")
+    val allRuns = Await.result(dbRead.run(runsQuery.result), 10.seconds)
+    logger.info(s"Db read")
     val futures = cases.flatMap { testCase =>
       biasParamPairs.flatMap { biasParam =>
         val training = testCase.trainingData(sampleSize, biasParam)
@@ -149,24 +152,23 @@ object Representer {
           initialLearningRates.flatMap { initialLearningRate =>
             learningStrategies.flatMap { learningRateDecayStrategy =>
               maxEpochs.map { maxEpochs =>
+
+                val matchingRuns = allRuns.filter{r =>
+                  r.testCaseName ==== testCase.name &&
+                    r.sampleSize ==== sampleSize &&
+                    r.firstHiddenLayerSize ==== hiddenLayerSize &&
+                    r.initialLearningRate ==== initialLearningRate &&
+                    r.decayStrategy ==== learningRateDecayStrategy.name &&
+                    r.learningRateDecayRate ==== learningRateDecayStrategy.decayRate &&
+                    r.maxEpoch ==== maxEpochs &&
+                    r.trainingBiasRatio ==== biasParam.ratio &&
+                    r.trainingBiasRadius ==== biasParam.radius
+                }
                 val paramsString = s"${testCase.name.s}: hiddenLayerSize=$hiddenLayerSize, sampleSize=$sampleSize," +
                   s" initialLearningRate=$initialLearningRate, learningRateStrategy=${learningRateDecayStrategy.name.s}," +
                   s" learningDecayRate:${learningRateDecayStrategy.decayRate}, maxEpochs: $maxEpochs, trainingBias: $biasParam"
-                logger.info(s"Submitting read: $paramsString")
-                val checkIfDone = dbRead.run(runsQuery.filter { r =>
-                  r.testCaseName === testCase.name &&
-                    r.sampleSize === sampleSize &&
-                    r.firstHiddenLayerSize === hiddenLayerSize &&
-                    r.initialLearningRate === initialLearningRate &&
-                    r.decayStrategy === learningRateDecayStrategy.name &&
-                    r.learningRateDecayRate === learningRateDecayStrategy.decayRate &&
-                    r.maxEpochs === maxEpochs &&
-                    r.trainingBiasRatio === biasParam.ratio &&
-                    r.trainingBiasRadius === biasParam.radius
-                }.result)
-                val computeAndWrite = checkIfDone.flatMap { matchingRuns =>
-
-                  if (matchingRuns.isEmpty) {
+                if (matchingRuns.isEmpty) {
+                  Future {
                     logger.info(s"Training $paramsString")
                     val (nnWithLastEpoch, metrics, timeTook) = trainAndMeasureMetrics(training, test,
                       hiddenLayerSize = hiddenLayerSize,
@@ -190,14 +192,13 @@ object Representer {
                       lastEpoch = nnWithLastEpoch.lastEpoch
                     )
                     dbWrite.run(runsQuery += run).andThen { case _ => logger.info(s"Written $paramsString") }
-                  } else if (matchingRuns.size ==== 1) {
-                    logger.info(s"Skipping $paramsString")
-                    Future.successful(())
-                  } else {
-                    Future.failed(new AssertionError(s"multiple matching runs: $matchingRuns"))
-                  }
+                  }(asyncEc)
+                } else if (matchingRuns.size ==== 1) {
+                  logger.info(s"Skipping $paramsString")
+                  Future.successful(())
+                } else {
+                  Future.failed(new AssertionError(s"multiple matching runs: $matchingRuns"))
                 }
-                computeAndWrite
               }
             }
           }
