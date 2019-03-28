@@ -1,6 +1,6 @@
 package com.kristofszilagyi.representer.cases
 
-import com.kristofszilagyi.representer.Representer.{FeaturesWithResults, Input}
+import com.kristofszilagyi.representer.Representer.{FeaturesWithResults, Input2}
 import com.kristofszilagyi.representer.Warts.Var
 import com.kristofszilagyi.representer.{BiasParams, TestCase, TestCaseName}
 import com.kristofszilagyi.representer.TypeSafeEqualsOps._
@@ -14,7 +14,7 @@ object Multiplication extends TestCase {
     val unbiased = (1 to Math.round(size.toDouble * unbiasedPercentage).toInt).map { _ =>
       val a = random.nextDouble() * 10
       val b = random.nextDouble() * 10
-      val input = Input(a, b)
+      val input = Input2(a, b)
       FeaturesWithResults(input, a * b > cutTarget)
     }
     @SuppressWarnings(Array(Var))
@@ -22,7 +22,7 @@ object Multiplication extends TestCase {
     while (biased.size + unbiased.size < size) {
       val a = random.nextDouble() * 10
       val b = random.nextDouble() * 10
-      val input = Input(a, b)
+      val input = Input2(a, b)
       val result = a * b
       val distanceFromTarget = math.abs(result - cutTarget)
       if (distanceFromTarget < biasParams.radius) {

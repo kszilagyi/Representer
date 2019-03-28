@@ -21,14 +21,6 @@ object Common {
 
   def initialLearningRates: immutable.Seq[Double] = List(0.01, 0.1, 1)
 
-  def biasParamPairs: Seq[BiasParams] = List(
-    BiasParams(ratio = 0.0, radius = 1000000),
-    BiasParams(ratio = 0.9, radius = 1),
-    BiasParams(ratio = 0.9, radius = 5),
-    BiasParams(ratio = 1.0, radius = 1),
-    BiasParams(ratio = 1.0, radius = 5)
-  )
-
   def teachScaler(training: Data): Scaler = {
     val trainingX = training.unscaledX
     val scaler = new Scaler(true)

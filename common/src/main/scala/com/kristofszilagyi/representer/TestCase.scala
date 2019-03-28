@@ -19,12 +19,22 @@ object TestCaseName {
 final case class TestCaseName(s: String)
 
 trait TestCase {
-  def trainingData(size: Int, biased: BiasParams): Data = {
+  def biasParamPairs: Seq[BiasParams] = List(
+    BiasParams(ratio = 0.0, radius = 1000000),
+    BiasParams(ratio = 0.9, radius = 1),
+    BiasParams(ratio = 0.9, radius = 5),
+    BiasParams(ratio = 1.0, radius = 1),
+    BiasParams(ratio = 1.0, radius = 5)
+  )
+
+  def sampleSize = 1000
+
+  final def trainingData(size: Int, biased: BiasParams): Data = {
     val random = new Random(1)
     Data(generateData(random, size, biased))
   }
 
-  def testData(size: Int): Data = {
+  final def testData(size: Int): Data = {
     val random = new Random(2)
     Data(generateData(random, size, BiasParams(ratio = 0, radius = Double.NaN)))
   }

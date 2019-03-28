@@ -1,6 +1,6 @@
 package com.kristofszilagyi.representer.cases
 
-import com.kristofszilagyi.representer.Representer.{FeaturesWithResults, Input}
+import com.kristofszilagyi.representer.Representer.{FeaturesWithResults, Input2}
 import com.kristofszilagyi.representer.TypeSafeEqualsOps._
 import com.kristofszilagyi.representer.Warts.Var
 import com.kristofszilagyi.representer.{BiasParams, TestCase, TestCaseName}
@@ -15,7 +15,7 @@ object Equality extends TestCase {
     val unbiased = (1 to Math.round(size.toDouble * unbiasedPercentage).toInt).map { _ =>
       val a = random.nextDouble() * 10
       val b = random.nextDouble() * 10
-      val input = Input(a, b)
+      val input = Input2(a, b)
       FeaturesWithResults(input, math.abs(a - b) < epsilon)
     }
     @SuppressWarnings(Array(Var))
@@ -23,7 +23,7 @@ object Equality extends TestCase {
     while (biased.size + unbiased.size < size) {
       val a = random.nextDouble() * 10
       val b = random.nextDouble() * 10
-      val input = Input(a, b)
+      val input = Input2(a, b)
       val result = math.abs(a - b)
       if (result < biasParams.radius) {
         biased = FeaturesWithResults(input, result < epsilon) +: biased
