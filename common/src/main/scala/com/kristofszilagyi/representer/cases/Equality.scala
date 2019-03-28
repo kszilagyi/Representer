@@ -11,7 +11,7 @@ import scala.util.Random
 object Equality extends TestCase {
   def generateData(random: Random, size: Int, biasParams: BiasParams): immutable.IndexedSeq[FeaturesWithResults] = {
     val unbiasedPercentage = 1 - biasParams.ratio
-    val epsilon = 0.01
+    val epsilon = 1
     val unbiased = (1 to Math.round(size.toDouble * unbiasedPercentage).toInt).map { _ =>
       val a = random.nextDouble() * 10
       val b = random.nextDouble() * 10
