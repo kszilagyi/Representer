@@ -149,9 +149,10 @@ object Representer {
     logger.info(s"Db read")
     val futures = cases.flatMap { testCase =>
       testCase.biasParamPairs.flatMap { biasParam =>
-        val sampleSize = testCase.sampleSize
-        val training = testCase.trainingData(sampleSize, biasParam)
-        val test = testCase.testData(sampleSize)
+        val trainingSampleSize = testCase.trainingSampleSize
+        val testSampleSize = testCase.testSampleSize
+        val training = testCase.trainingData(trainingSampleSize, biasParam)
+        val test = testCase.testData(trainingSampleSize)
         hiddenLayerSizes.flatMap { hiddenLayerSize =>
           initialLearningRates.flatMap { initialLearningRate =>
             learningStrategies.flatMap { learningRateDecayStrategy =>
@@ -159,7 +160,7 @@ object Representer {
 
                 val matchingRuns = allRuns.filter{r =>
                   r.testCaseName ==== testCase.name &&
-                    r.sampleSize ==== sampleSize &&
+                    r.trainingSampleSize ==== trainingSampleSize && //testSampleSize intentionally missing as it's not really a param for learning
                     r.firstHiddenLayerSize ==== hiddenLayerSize &&
                     r.initialLearningRate ==== initialLearningRate &&
                     r.decayStrategy ==== learningRateDecayStrategy.name &&
@@ -168,7 +169,7 @@ object Representer {
                     r.trainingBiasRatio ==== biasParam.ratio &&
                     r.trainingBiasRadius ==== biasParam.radius
                 }
-                val paramsString = s"${testCase.name.s}: hiddenLayerSize=$hiddenLayerSize, sampleSize=$sampleSize," +
+                val paramsString = s"${testCase.name.s}: hiddenLayerSize=$hiddenLayerSize, trainingSampleSize=$trainingSampleSize," +
                   s" initialLearningRate=$initialLearningRate, learningRateStrategy=${learningRateDecayStrategy.name.s}," +
                   s" learningDecayRate:${learningRateDecayStrategy.decayRate}, maxEpochs: $maxEpochs, trainingBias: $biasParam"
                 if (matchingRuns.isEmpty) {
@@ -181,7 +182,8 @@ object Representer {
                     logger.info(s"Train finished $paramsString")
 
                     val run = Run(id = RunId.ignored, testCaseName = testCase.name, model = nnWithLastEpoch.classifier,
-                      sampleSize = sampleSize, firstHiddenLayerSize = hiddenLayerSize, initialLearningRate = initialLearningRate,
+                      trainingSampleSize = trainingSampleSize, testSampleSize = testSampleSize, firstHiddenLayerSize = hiddenLayerSize,
+                      initialLearningRate = initialLearningRate,
                       timeTaken = timeTook, decayStrategy = learningRateDecayStrategy.name,
                       learningRateDecayRate = learningRateDecayStrategy.decayRate, maxEpoch = maxEpochs,
                       trainingBiasRatio = biasParam.ratio, trainingBiasRadius = biasParam.radius,
@@ -195,8 +197,8 @@ object Representer {
                       fnTest = metrics.test.fn,
                       lastEpoch = nnWithLastEpoch.lastEpoch
                     )
-                    dbWrite.run(runsQuery += run).andThen { case _ => logger.info(s"Written $paramsString") }
-                  }(asyncEc)
+                    run
+                  }(asyncEc).map(run => dbWrite.run(runsQuery += run)).map { _ => logger.info(s"Written $paramsString") }
                 } else if (matchingRuns.size ==== 1) {
                   logger.info(s"Skipping $paramsString")
                   Future.successful(())

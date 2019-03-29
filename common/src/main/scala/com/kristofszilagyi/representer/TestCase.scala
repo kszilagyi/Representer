@@ -27,7 +27,8 @@ trait TestCase {
     BiasParams(ratio = 1.0, radius = 5)
   )
 
-  def sampleSize = 1000
+  def trainingSampleSize = 1000
+  def testSampleSize = 1000
 
   final def trainingData(size: Int, biased: BiasParams): Data = {
     val random = new Random(1)

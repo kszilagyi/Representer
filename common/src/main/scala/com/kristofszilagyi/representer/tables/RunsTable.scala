@@ -42,7 +42,8 @@ object RunId {
 }
 final case class RunId(i: Int)
 
-final case class Run(id: RunId, testCaseName: TestCaseName, model: Classifier[Array[Double]], sampleSize: Int, firstHiddenLayerSize: Int,
+final case class Run(id: RunId, testCaseName: TestCaseName, model: Classifier[Array[Double]], trainingSampleSize: Int,
+                     testSampleSize: Int, firstHiddenLayerSize: Int,
                      initialLearningRate: Double, timeTaken: FiniteDuration, decayStrategy: LearningRateDecayStrategyName,
                      learningRateDecayRate: Double, maxEpoch: Int, trainingBiasRatio: Double, trainingBiasRadius: Double,
                      tpTrain: Int, fpTrain: Int, tnTrain: Int,
@@ -57,7 +58,8 @@ final class RunsTable(tag: Tag) extends Table[Run](tag, "runs") {
   def id: Rep[RunId] = column[RunId]("id", O.PrimaryKey, O.AutoInc)
   def model: Rep[Classifier[Array[Double]]] = column[Classifier[Array[Double]]]("model")
   def testCaseName: Rep[TestCaseName] = column[TestCaseName]("testCaseName")
-  def sampleSize: Rep[Int] = column[Int]("sampleSize")
+  def trainingSampleSize: Rep[Int] = column[Int]("trainingSampleSize")
+  def testSampleSize: Rep[Int] = column[Int]("testSampleSize")
   def firstHiddenLayerSize: Rep[Int] = column[Int]("firstHiddenLayerSize")
   def initialLearningRate: Rep[Double] = column[Double]("initialLearningRate")
   def timeTaken: Rep[FiniteDuration] = column[FiniteDuration]("trainingTimeNs")
@@ -76,7 +78,7 @@ final class RunsTable(tag: Tag) extends Table[Run](tag, "runs") {
   def fnTest: Rep[Int] = column[Int]("fnTest")
   def lastEpoch: Rep[Epoch] = column[Epoch]("lastEpoch")
 
-  def * : ProvenShape[Run] = (id, testCaseName, model, sampleSize, firstHiddenLayerSize, initialLearningRate, timeTaken,
+  def * : ProvenShape[Run] = (id, testCaseName, model, trainingSampleSize, testSampleSize, firstHiddenLayerSize, initialLearningRate, timeTaken,
     decayStrategy, learningRateDecayRate, maxEpochs, trainingBiasRatio, trainingBiasRadius, tpTrain, fpTrain, tnTrain, fnTrain,
     tpTest, fpTest, tnTest, fnTest,
     lastEpoch).shaped <> (Run.tupled.apply, Run.unapply)
