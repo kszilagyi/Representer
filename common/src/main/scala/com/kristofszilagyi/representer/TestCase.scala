@@ -30,17 +30,17 @@ trait TestCase {
   def trainingSampleSize = 1000
   def testSampleSize = 1000
 
-  final def trainingData(size: Int, biased: BiasParams): Data = {
+  def trainingData(size: Int, biased: BiasParams): Data = {
     val random = new Random(1)
     Data(generateData(random, size, biased))
   }
 
-  final def testData(size: Int): Data = {
+  def testData(size: Int): Data = {
     val random = new Random(2)
     Data(generateData(random, size, BiasParams(ratio = 0, radius = Double.NaN)))
   }
 
   def generateData(random: Random, size: Int, biased: BiasParams): immutable.IndexedSeq[FeaturesWithResults]
 
-  def name: TestCaseName
+  final def name: TestCaseName = TestCaseName(this.getClass.getSimpleName.replaceAll("\\$", ""))
 }

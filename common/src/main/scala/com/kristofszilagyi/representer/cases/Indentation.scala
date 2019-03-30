@@ -2,7 +2,7 @@ package com.kristofszilagyi.representer.cases
 
 import com.kristofszilagyi.representer.Representer.{FeaturesWithResults, Input6}
 import com.kristofszilagyi.representer.TypeSafeEqualsOps._
-import com.kristofszilagyi.representer.{BiasParams, TestCase, TestCaseName}
+import com.kristofszilagyi.representer.{BiasParams, TestCase}
 
 import scala.collection.immutable
 import scala.util.Random
@@ -34,5 +34,4 @@ object Indentation extends TestCase {
     BiasParams(ratio = 0.0, radius = 1000000),
   )
 
-  def name: TestCaseName = TestCaseName("Indentation")
 }

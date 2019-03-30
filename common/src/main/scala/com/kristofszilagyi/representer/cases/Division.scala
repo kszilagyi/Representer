@@ -1,9 +1,10 @@
 package com.kristofszilagyi.representer.cases
 
 import com.kristofszilagyi.representer.Representer.{FeaturesWithResults, Input2}
-import com.kristofszilagyi.representer.Warts.Var
-import com.kristofszilagyi.representer.{BiasParams, TestCase, TestCaseName}
 import com.kristofszilagyi.representer.TypeSafeEqualsOps._
+import com.kristofszilagyi.representer.Warts.Var
+import com.kristofszilagyi.representer.{BiasParams, TestCase}
+
 import scala.collection.immutable
 import scala.util.Random
 
@@ -35,5 +36,4 @@ object Division extends TestCase {
     all
   }
 
-  override def name: TestCaseName = TestCaseName("Division")
 }

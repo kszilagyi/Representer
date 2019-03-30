@@ -4,7 +4,7 @@ import com.kristofszilagyi.representer.Common.{autoScale, hiddenLayerSizes, init
 import com.kristofszilagyi.representer.LearningRateDecayStrategy._
 import com.kristofszilagyi.representer.TypeSafeEqualsOps._
 import com.kristofszilagyi.representer.Warts.{IsInstanceOf, Var, discard}
-import com.kristofszilagyi.representer.cases.{Division, Equality, Indentation, Multiplication}
+import com.kristofszilagyi.representer.cases.{Csv, Division, Equality, Indentation, Multiplication}
 import com.kristofszilagyi.representer.tables.RunsTable._
 import com.kristofszilagyi.representer.tables._
 import org.log4s.getLogger
@@ -137,13 +137,15 @@ object Representer {
     def doubles: Array[Double] = Array(a, b, c, d, e, f)
   }
 
+  final case class InputN(doubles: Array[Double]) extends Features
+
   @SuppressWarnings(Array(IsInstanceOf))
   def main(args: Array[String]): Unit = {
     val dbRead = Database.forConfig("representerRead")
     val dbWrite = Database.forConfig("representerWrite")
     implicit val ec: ExecutionContext = new SyncEc() // this makes sense because the db has it's own thread pool which makes the whole thing parallel
     val asyncEc: ExecutionContext = ExecutionContext.Implicits.global // this makes sense because the db has it's own thread pool which makes the whole thing parallel
-    val cases: Traversable[TestCase] = Traversable(Multiplication, Equality, Division, Indentation)
+    val cases: Traversable[TestCase] = Traversable(Multiplication, Equality, Division, Indentation, new Csv)
     logger.info(s"Reading db")
     val allRuns = Await.result(dbRead.run(runsQuery.result), 10.seconds)
     logger.info(s"Db read")
@@ -152,7 +154,7 @@ object Representer {
         val trainingSampleSize = testCase.trainingSampleSize
         val testSampleSize = testCase.testSampleSize
         val training = testCase.trainingData(trainingSampleSize, biasParam)
-        val test = testCase.testData(trainingSampleSize)
+        val test = testCase.testData(testSampleSize)
         hiddenLayerSizes.flatMap { hiddenLayerSize =>
           initialLearningRates.flatMap { initialLearningRate =>
             learningStrategies.flatMap { learningRateDecayStrategy =>
@@ -170,6 +172,7 @@ object Representer {
                     r.trainingBiasRadius ==== biasParam.radius
                 }
                 val paramsString = s"${testCase.name.s}: hiddenLayerSize=$hiddenLayerSize, trainingSampleSize=$trainingSampleSize," +
+                  s" testSampleSize=$testSampleSize, " +
                   s" initialLearningRate=$initialLearningRate, learningRateStrategy=${learningRateDecayStrategy.name.s}," +
                   s" learningDecayRate:${learningRateDecayStrategy.decayRate}, maxEpochs: $maxEpochs, trainingBias: $biasParam"
                 if (matchingRuns.isEmpty) {

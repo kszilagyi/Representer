@@ -16,7 +16,7 @@ object Common {
   def hiddenLayerSizes: immutable.IndexedSeq[Int] = {
     (0 to 6).map { hiddenLayerExponent =>
       math.round(math.pow(2, hiddenLayerExponent.toDouble)).toInt
-    }
+    }.reverse
   }
 
   def initialLearningRates: immutable.Seq[Double] = List(0.01, 0.1, 1)
